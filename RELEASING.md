@@ -42,26 +42,20 @@ git push
 
 ## 5. 初回のみ: コミュニティプラグインへの登録申請
 
-1. [obsidianmd/obsidian-releases](https://github.com/obsidianmd/obsidian-releases) をフォークする
-2. `community-plugins.json` の末尾に次のエントリを追加する
+以前は [obsidianmd/obsidian-releases](https://github.com/obsidianmd/obsidian-releases) の `community-plugins.json` に PR を出す方式だったが、現在このリポジトリは自動ミラーで PR を受け付けていない。提出は [community.obsidian.md](https://community.obsidian.md) から行う。手順の一次情報は公式ドキュメントの [Submit your plugin](https://docs.obsidian.md/Plugins/Releasing/Submit+your+plugin)。
 
-   ```json
-   {
-     "id": "html-gallery",
-     "name": "HTML Gallery",
-     "author": "violetyk",
-     "description": "Browse HTML files in your vault as a grid of live thumbnails, search them by title and content, and open the notes that link to them.",
-     "repo": "violetyk/obsidian-html-gallery"
-   }
-   ```
+前提として、リポジトリのルートに `README.md`、`LICENSE`、`manifest.json` があり、手順 4 のリリースが公開されていること。
 
-   `id` `name` `description` は `manifest.json` と一字一句同じにする
-3. 「Add plugin: HTML Gallery」のようなタイトルで Pull Request を出す。PR テンプレートのチェックリストをすべて確認する
-4. 自動チェック（ボット）の指摘と、レビュアーのコメントに対応する。修正はこのリポジトリ側で行い、必要ならバージョンを上げて新しいリリースを作る
+1. community.obsidian.md に Obsidian アカウントでサインインする
+2. GitHub アカウントを連携し、リポジトリの所有者であることを確認する
+3. ディレクトリの画面からプラグインを追加する。`manifest.json` はリポジトリの既定ブランチ（main）から読まれる。`id` が他と重複しておらず、"obsidian" を含まないこと
+4. 自動レビューの指摘があれば、このリポジトリ側で修正し、バージョンを上げて新しいリリースを公開してから再確認する
+
+登録後は、フォーラムの Share & showcase や Discord の `#updates`（developer ロールが必要）で公開を告知できる。
 
 ## 6. 2 回目以降
 
-手順 1〜4 だけで良い。リリースを公開すると、Obsidian 側が `versions.json` と最新リリースを見て更新を配信する。
+手順 1〜4 だけで良い。リリースを公開すると、Obsidian 側が `manifest.json` と `versions.json`、最新リリースを見て更新を配信する。
 
 ## 提出前チェックリスト
 
