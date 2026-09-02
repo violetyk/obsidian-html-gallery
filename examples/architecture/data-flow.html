@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Order event data flow</title>
+<style>
+  body { margin:0; padding:40px 56px; background:#f2faf5; color:#173d2a; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  h1 { margin:0 0 6px; font-size:34px; }
+  p.lead { margin:0 0 24px; color:#4f7a63; font-size:17px; }
+  svg { width:100%; height:auto; display:block; }
+  .node rect { fill:#ffffff; stroke:#3aa76d; stroke-width:2.5; rx:12; }
+  .node.queue rect { fill:#e6f6ec; stroke-dasharray:8 6; }
+  .node text { font-size:18px; fill:#173d2a; font-weight:600; }
+  .node .sub { font-size:13px; fill:#4f7a63; font-weight:400; }
+  .edge { stroke:#3aa76d; stroke-width:2.5; fill:none; marker-end:url(#arrow); }
+  .edge-label { font-size:13px; fill:#2d6b48; }
+  .legend { margin-top:16px; font-size:13px; color:#4f7a63; }
+</style>
+</head>
+<body>
+  <h1>Order event data flow</h1>
+  <p class="lead">From the moment a customer places an order to the search index being updated.</p>
+  <svg viewBox="0 0 1160 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Data flow diagram">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="#3aa76d"/>
+      </marker>
+    </defs>
+    <g class="node"><rect x="20" y="160" width="180" height="90"/><text x="110" y="198" text-anchor="middle">Checkout</text><text class="sub" x="110" y="222" text-anchor="middle">web / mobile</text></g>
+    <g class="node"><rect x="270" y="160" width="180" height="90"/><text x="360" y="198" text-anchor="middle">Order API</text><text class="sub" x="360" y="222" text-anchor="middle">validates, persists</text></g>
+    <g class="node queue"><rect x="520" y="160" width="180" height="90"/><text x="610" y="198" text-anchor="middle">orders.placed</text><text class="sub" x="610" y="222" text-anchor="middle">message queue</text></g>
+    <g class="node"><rect x="800" y="40" width="200" height="90"/><text x="900" y="78" text-anchor="middle">Fulfilment worker</text><text class="sub" x="900" y="102" text-anchor="middle">reserves stock</text></g>
+    <g class="node"><rect x="800" y="160" width="200" height="90"/><text x="900" y="198" text-anchor="middle">Notification worker</text><text class="sub" x="900" y="222" text-anchor="middle">email, push</text></g>
+    <g class="node"><rect x="800" y="280" width="200" height="90"/><text x="900" y="318" text-anchor="middle">Indexer</text><text class="sub" x="900" y="342" text-anchor="middle">updates search</text></g>
+    <path class="edge" d="M200 205 L268 205"/>
+    <path class="edge" d="M450 205 L518 205"/>
+    <path class="edge" d="M700 205 C 750 205, 750 85, 798 85"/>
+    <path class="edge" d="M700 205 L798 205"/>
+    <path class="edge" d="M700 205 C 750 205, 750 325, 798 325"/>
+    <text class="edge-label" x="234" y="190" text-anchor="middle">POST /orders</text>
+    <text class="edge-label" x="484" y="190" text-anchor="middle">publish</text>
+    <text class="edge-label" x="750" y="150" text-anchor="middle">fan-out</text>
+  </svg>
+  <div class="legend">Dashed box: asynchronous boundary. Each consumer keeps its own offset.</div>
+</body>
+</html>

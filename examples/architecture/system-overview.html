@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System overview</title>
+<style>
+  :root { --bg:#f5f8ff; --ink:#1b2a4a; --box:#ffffff; --line:#7a93c9; --accent:#2f5bd6; --muted:#6b7a99; }
+  body { margin:0; padding:40px 56px; background:var(--bg); color:var(--ink); font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  h1 { margin:0 0 6px; font-size:34px; }
+  p.lead { margin:0 0 32px; color:var(--muted); font-size:17px; }
+  .tier { display:grid; grid-template-columns: repeat(4, 1fr); gap:24px; margin-bottom:12px; }
+  .tier-label { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:18px 0 8px; }
+  .box { background:var(--box); border:2px solid var(--line); border-radius:12px; padding:18px 20px; box-shadow:0 2px 0 rgba(47,91,214,.08); }
+  .box h2 { margin:0 0 6px; font-size:18px; color:var(--accent); }
+  .box p { margin:0; font-size:14px; color:var(--muted); line-height:1.45; }
+  .box.wide { grid-column: span 2; }
+  .box.store { border-style:dashed; background:#fbfcff; }
+  .arrows { display:grid; grid-template-columns: repeat(4, 1fr); gap:24px; height:34px; }
+  .arrows span { display:block; text-align:center; color:var(--line); font-size:26px; line-height:34px; }
+  footer { margin-top:28px; font-size:13px; color:var(--muted); }
+</style>
+</head>
+<body>
+  <h1>System overview</h1>
+  <p class="lead">Request path from clients to storage, as of August 2026.</p>
+
+  <div class="tier-label">Clients</div>
+  <div class="tier">
+    <div class="box"><h2>Web app</h2><p>React SPA served from the CDN.</p></div>
+    <div class="box"><h2>Mobile app</h2><p>iOS and Android, same public API.</p></div>
+    <div class="box"><h2>Partner integrations</h2><p>Signed webhooks and a REST API.</p></div>
+    <div class="box"><h2>Back office</h2><p>Internal admin console.</p></div>
+  </div>
+  <div class="arrows"><span>&#8595;</span><span>&#8595;</span><span>&#8595;</span><span>&#8595;</span></div>
+
+  <div class="tier-label">Edge and API</div>
+  <div class="tier">
+    <div class="box wide"><h2>API gateway</h2><p>Auth, rate limiting, request routing. Terminates TLS.</p></div>
+    <div class="box wide"><h2>Public API</h2><p>Stateless services behind the gateway. Publishes domain events.</p></div>
+  </div>
+  <div class="arrows"><span>&#8595;</span><span>&#8595;</span><span>&#8595;</span><span>&#8595;</span></div>
+
+  <div class="tier-label">Async processing</div>
+  <div class="tier">
+    <div class="box wide"><h2>Message queue</h2><p>Decouples API from workers. See ADR-001.</p></div>
+    <div class="box"><h2>Workers</h2><p>Order fulfilment, notifications.</p></div>
+    <div class="box"><h2>Scheduler</h2><p>Nightly jobs and retries.</p></div>
+  </div>
+  <div class="arrows"><span>&#8595;</span><span>&#8595;</span><span>&#8595;</span><span>&#8595;</span></div>
+
+  <div class="tier-label">Storage</div>
+  <div class="tier">
+    <div class="box store"><h2>PostgreSQL</h2><p>System of record.</p></div>
+    <div class="box store"><h2>Object storage</h2><p>Files, exports, images.</p></div>
+    <div class="box store"><h2>Search index</h2><p>Rebuilt from events.</p></div>
+    <div class="box store"><h2>Cache</h2><p>Sessions and hot reads.</p></div>
+  </div>
+
+  <footer>Self-contained HTML. No external assets.</footer>
+</body>
+</html>

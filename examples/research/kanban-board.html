@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Migration kanban (rendered from JSON)</title>
+<style>
+  body { margin:0; padding:40px 56px; background:#fafaf9; color:#292524; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  h1 { margin:0 0 20px; font-size:32px; }
+  .board { display:grid; grid-template-columns: repeat(4, 1fr); gap:20px; }
+  .col { background:#f0eeea; border-radius:12px; padding:14px; }
+  .col h2 { margin:0 0 12px; font-size:15px; text-transform:uppercase; letter-spacing:.1em; color:#78716c; }
+  .card { background:#fff; border-radius:8px; padding:12px 14px; margin-bottom:10px; box-shadow:0 1px 2px rgba(0,0,0,.08); font-size:15px; }
+  .card small { display:block; margin-top:6px; color:#a8a29e; }
+</style>
+</head>
+<body>
+  <div id="board"></div>
+  <script>
+    const columns = {
+      "Backlog": [["Dead-letter queue dashboard", "ops"], ["Retry policy per consumer", "platform"]],
+      "In progress": [["Idempotency keys for fulfilment", "orders"], ["Load test script", "qa"]],
+      "Review": [["ADR-001 message queue", "platform"]],
+      "Done": [["Queue in staging", "platform"], ["Consumer group naming", "platform"], ["Alert on lag", "ops"]]
+    };
+    const board = document.getElementById('board');
+    const h1 = document.createElement('h1'); h1.textContent = 'Migration kanban'; board.appendChild(h1);
+    const grid = document.createElement('div'); grid.className = 'board'; board.appendChild(grid);
+    for (const [name, cards] of Object.entries(columns)) {
+      const col = document.createElement('div'); col.className = 'col';
+      const h2 = document.createElement('h2'); h2.textContent = `${name} (${cards.length})`; col.appendChild(h2);
+      for (const [title, team] of cards) {
+        const card = document.createElement('div'); card.className = 'card'; card.textContent = title;
+        const s = document.createElement('small'); s.textContent = team; card.appendChild(s);
+        col.appendChild(card);
+      }
+      grid.appendChild(col);
+    }
+  </script>
+</body>
+</html>

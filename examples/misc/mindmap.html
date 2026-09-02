@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Platform mind map</title>
+<style>
+  body { margin:0; padding:40px 56px; background:#1e1b4b; color:#e0e7ff; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  h1 { margin:0 0 6px; font-size:34px; }
+  p.lead { margin:0 0 12px; color:#a5b4fc; font-size:17px; }
+  svg { width:100%; height:auto; display:block; }
+  .center circle { fill:#6366f1; }
+  .center text { fill:#fff; font-size:22px; font-weight:700; }
+  .branch line { stroke:#818cf8; stroke-width:3; }
+  .branch circle { fill:#312e81; stroke:#a5b4fc; stroke-width:2; }
+  .branch text { fill:#e0e7ff; font-size:17px; font-weight:600; }
+  .leaf line { stroke:#4c4899; stroke-width:2; }
+  .leaf text { fill:#c7d2fe; font-size:14px; }
+</style>
+</head>
+<body>
+  <h1>Platform mind map</h1>
+  <p class="lead">Where each topic in these notes belongs.</p>
+  <svg viewBox="0 0 1160 560" xmlns="http://www.w3.org/2000/svg">
+    <g class="branch">
+      <line x1="580" y1="280" x2="260" y2="140"/><line x1="580" y1="280" x2="900" y2="140"/>
+      <line x1="580" y1="280" x2="260" y2="420"/><line x1="580" y1="280" x2="900" y2="420"/>
+    </g>
+    <g class="leaf">
+      <line x1="260" y1="140" x2="110" y2="80"/><text x="20" y="72">API gateway</text>
+      <line x1="260" y1="140" x2="110" y2="200"/><text x="20" y="206">Public API</text>
+      <line x1="900" y1="140" x2="1050" y2="80"/><text x="1000" y="72">Workers</text>
+      <line x1="900" y1="140" x2="1050" y2="200"/><text x="1000" y="206">Scheduler</text>
+      <line x1="260" y1="420" x2="110" y2="360"/><text x="20" y="352">Timeline</text>
+      <line x1="260" y1="420" x2="110" y2="480"/><text x="20" y="486">Decision tree</text>
+      <line x1="900" y1="420" x2="1050" y2="360"/><text x="1000" y="352">Charts</text>
+      <line x1="900" y1="420" x2="1050" y2="480"/><text x="1000" y="486">Comparison</text>
+    </g>
+    <g class="branch">
+      <circle cx="260" cy="140" r="52"/><text x="260" y="146" text-anchor="middle">Edge</text>
+      <circle cx="900" cy="140" r="52"/><text x="900" y="146" text-anchor="middle">Async</text>
+      <circle cx="260" cy="420" r="52"/><text x="260" y="426" text-anchor="middle">Meetings</text>
+      <circle cx="900" cy="420" r="52"/><text x="900" y="426" text-anchor="middle">Research</text>
+    </g>
+    <g class="center"><circle cx="580" cy="280" r="70"/><text x="580" y="288" text-anchor="middle">Platform</text></g>
+  </svg>
+</body>
+</html>

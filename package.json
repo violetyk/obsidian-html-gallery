@@ -1,0 +1,26 @@
+{
+  "name": "obsidian-html-gallery",
+  "version": "1.0.0",
+  "description": "Browse HTML files in your vault as a grid of live thumbnails, search them by title and content, and open the notes that link to them.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "typecheck": "tsc -noEmit -skipLibCheck"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin"
+  ],
+  "author": "violetyk",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.24.0",
+    "obsidian": "latest",
+    "tslib": "^2.6.0",
+    "typescript": "^5.5.0"
+  }
+}

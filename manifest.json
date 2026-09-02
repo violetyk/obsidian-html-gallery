@@ -1,0 +1,9 @@
+{
+  "id": "html-gallery",
+  "name": "HTML Gallery",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.0",
+  "description": "Browse HTML files in your vault as a grid of live thumbnails, search them by title and content, and open the notes that link to them.",
+  "author": "violetyk",
+  "isDesktopOnly": false
+}

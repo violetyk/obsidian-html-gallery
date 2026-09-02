@@ -1,0 +1,494 @@
+/* ===== Layout ===== */
+
+.html-gallery {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.html-gallery-empty {
+  color: var(--text-muted);
+  padding: 2em;
+  text-align: center;
+  grid-column: 1 / -1;
+}
+
+.html-gallery-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.html-gallery-search {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+.html-gallery-count {
+  flex: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+
+.html-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--html-gallery-card-width, 280px), 1fr));
+  gap: 16px;
+  padding: 16px;
+  align-content: start;
+}
+
+/* ===== Card ===== */
+
+.html-gallery-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m, 8px);
+  background: var(--background-primary);
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.html-gallery-card:hover {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
+}
+
+.html-gallery-shot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1280 / 920;
+  overflow: hidden;
+  background: var(--background-secondary);
+}
+
+.html-gallery-shot-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 1em;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  text-align: center;
+  word-break: break-all;
+}
+
+.html-gallery-meta {
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-small);
+}
+
+.html-gallery-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.html-gallery-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-normal);
+  font-weight: var(--font-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.html-gallery-path-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.html-gallery-path {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.html-gallery-date {
+  flex: none;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Folder headings when sorted by folder */
+.html-gallery-group-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 -6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+}
+
+.html-gallery-group-heading:first-child {
+  margin-top: 0;
+}
+
+/* ===== Thumbnail iframe ===== */
+
+.html-gallery-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+  background: #fff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.html-gallery-shot.is-loaded .html-gallery-iframe {
+  opacity: 1;
+}
+
+.html-gallery-shot.is-loaded .html-gallery-shot-placeholder {
+  visibility: hidden;
+}
+
+/* ===== Thumbnail size ===== */
+
+.html-gallery-grid.is-size-small {
+  --html-gallery-card-width: 200px;
+}
+
+.html-gallery-grid.is-size-medium {
+  --html-gallery-card-width: 280px;
+}
+
+.html-gallery-grid.is-size-large {
+  --html-gallery-card-width: 400px;
+}
+
+/* ===== Fallback for blank thumbnails ===== */
+
+.html-gallery-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 14px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, var(--background-secondary), var(--background-secondary-alt));
+  overflow: hidden;
+}
+
+.html-gallery-fallback-badge {
+  align-self: flex-start;
+  padding: 0 6px;
+  border-radius: var(--radius-s, 4px);
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.html-gallery-fallback-title {
+  color: var(--text-normal);
+  font-weight: var(--font-semibold);
+  font-size: var(--font-ui-medium);
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.html-gallery-fallback-excerpt {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+/* ===== Enlarged view modal ===== */
+
+.html-gallery-modal {
+  width: min(96vw, 1400px);
+  height: 92vh;
+  max-width: none;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.html-gallery-modal .modal-content {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.html-gallery-modal-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+
+.html-gallery-modal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.html-gallery-modal-path {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.html-gallery-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.html-gallery-modal-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-ui-small);
+}
+
+
+.html-gallery-modal-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s, 4px);
+  overflow: hidden;
+  background: #fff;
+}
+
+.html-gallery-modal-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* ===== Settings tab ===== */
+
+.html-gallery-settings-textarea {
+  width: 100%;
+  min-width: 260px;
+}
+
+/* ===== Card focus ===== */
+
+.html-gallery-card:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+/* ===== Header controls ===== */
+
+.html-gallery-button-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.html-gallery-button-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.html-gallery-button-group {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-m, 8px);
+  background: var(--background-secondary);
+}
+
+.html-gallery-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.html-gallery-toggle-button:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.html-gallery-toggle-button.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.html-gallery-size-button {
+  min-width: 26px;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+.html-gallery-folder {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}
+
+.html-gallery-folder-select {
+  max-width: 260px;
+  font-size: var(--font-ui-small);
+}
+
+.has-folder-filter .html-gallery-folder {
+  color: var(--text-accent);
+}
+
+.html-gallery-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.html-gallery-icon-button:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.html-gallery-icon-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.html-gallery-icon-button.is-hidden {
+  display: none;
+}
+
+/* ===== Backlinks / same-folder button ===== */
+
+.html-gallery-refs-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 6px 0 5px;
+  box-shadow: none;
+  border-radius: var(--radius-s, 4px);
+  font-size: var(--font-ui-smaller);
+  line-height: 1;
+}
+
+.html-gallery-refs-count {
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 0.9em;
+}
+
+/* Confirmed: filled button */
+.html-gallery-refs-button.is-resolved {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.html-gallery-refs-button.is-resolved:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.html-gallery-refs-button.is-resolved .html-gallery-refs-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Guessed: subdued button with dashed border */
+.html-gallery-refs-button.is-sibling {
+  background: transparent;
+  border: 1px dashed var(--text-faint);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.html-gallery-refs-button.is-sibling:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.html-gallery-refs-button.is-sibling .html-gallery-refs-count {
+  background: var(--background-modifier-border);
+}
+
+.html-gallery-refs-none {
+  flex: none;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+/* Inside the modal, match the regular button size */
+.html-gallery-modal-button.html-gallery-refs-button {
+  height: auto;
+  padding: var(--size-4-1) var(--size-4-3);
+  font-size: var(--font-ui-small);
+  font-style: normal;
+}
+
+/* ===== Link suggest modal ===== */
+
+.html-gallery-suggest-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.html-gallery-suggest-badge {
+  padding: 0 6px;
+  border-radius: var(--radius-s, 4px);
+  border: 1px dashed var(--text-faint);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.html-gallery-suggest-path {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}

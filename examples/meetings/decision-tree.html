@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Build vs. buy: notification service</title>
+<style>
+  body { margin:0; padding:40px 56px; background:#f4f4f4; color:#222; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  h1 { margin:0 0 6px; font-size:34px; }
+  p.lead { margin:0 0 20px; color:#666; font-size:17px; }
+  svg { width:100%; height:auto; display:block; }
+  .q rect { fill:#fff; stroke:#444; stroke-width:2; rx:10; }
+  .q text { font-size:17px; fill:#222; }
+  .a rect { rx:10; stroke-width:2; }
+  .a.buy rect { fill:#e3f2fd; stroke:#1e88e5; }
+  .a.build rect { fill:#fff3e0; stroke:#fb8c00; }
+  .a text { font-size:17px; font-weight:600; }
+  .e { stroke:#888; stroke-width:2; fill:none; }
+  .lbl { font-size:14px; fill:#555; }
+</style>
+</head>
+<body>
+  <h1>Build vs. buy: notification service</h1>
+  <p class="lead">The questions we asked, in order.</p>
+  <svg viewBox="0 0 1160 520" xmlns="http://www.w3.org/2000/svg">
+    <g class="q"><rect x="430" y="20" width="300" height="70"/><text x="580" y="62" text-anchor="middle">Is it a differentiator?</text></g>
+    <path class="e" d="M580 90 L580 130 L330 130 L330 170"/><text class="lbl" x="440" y="122" text-anchor="middle">no</text>
+    <path class="e" d="M580 90 L580 130 L830 130 L830 170"/><text class="lbl" x="720" y="122" text-anchor="middle">yes</text>
+    <g class="q"><rect x="180" y="170" width="300" height="70"/><text x="330" y="212" text-anchor="middle">Vendor covers 80%?</text></g>
+    <g class="q"><rect x="680" y="170" width="300" height="70"/><text x="830" y="212" text-anchor="middle">Do we have the team?</text></g>
+    <path class="e" d="M330 240 L330 280 L180 280 L180 320"/><text class="lbl" x="250" y="272" text-anchor="middle">yes</text>
+    <path class="e" d="M330 240 L330 280 L480 280 L480 320"/><text class="lbl" x="410" y="272" text-anchor="middle">no</text>
+    <path class="e" d="M830 240 L830 280 L680 280 L680 320"/><text class="lbl" x="750" y="272" text-anchor="middle">no</text>
+    <path class="e" d="M830 240 L830 280 L980 280 L980 320"/><text class="lbl" x="910" y="272" text-anchor="middle">yes</text>
+    <g class="a buy"><rect x="60" y="320" width="240" height="70"/><text x="180" y="362" text-anchor="middle">Buy</text></g>
+    <g class="a build"><rect x="360" y="320" width="240" height="70"/><text x="480" y="362" text-anchor="middle">Build thin wrapper</text></g>
+    <g class="a buy"><rect x="560" y="320" width="240" height="70"/><text x="680" y="362" text-anchor="middle">Buy, plan to replace</text></g>
+    <g class="a build"><rect x="860" y="320" width="240" height="70"/><text x="980" y="362" text-anchor="middle">Build</text></g>
+    <text class="lbl" x="580" y="470" text-anchor="middle">Outcome on 2026-08-05: notifications are not a differentiator and the vendor covers most cases, so we buy.</text>
+  </svg>
+</body>
+</html>

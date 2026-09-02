@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Q3 2026 delivery timeline</title>
+<style>
+  body { margin:0; padding:40px 56px; background:#fdf6ff; color:#3b1f4a; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  h1 { margin:0 0 6px; font-size:34px; }
+  p.lead { margin:0 0 36px; color:#8a6a99; font-size:17px; }
+  .track { position:relative; height:8px; background:#e6d6f0; border-radius:4px; margin:60px 0 80px; }
+  .track .done { position:absolute; left:0; top:0; height:100%; width:42%; background:#8e44ad; border-radius:4px; }
+  .m { position:absolute; top:-14px; transform:translateX(-50%); text-align:center; width:200px; }
+  .m .dot { width:36px; height:36px; border-radius:50%; margin:0 auto 10px; background:#fff; border:4px solid #8e44ad; box-sizing:border-box; }
+  .m.done .dot { background:#8e44ad; }
+  .m .date { font-size:13px; color:#8a6a99; }
+  .m .title { font-size:16px; font-weight:600; }
+  .m.below { top:auto; bottom:-14px; }
+  .m.below .dot { order:2; margin:10px auto 0; }
+  .m.below .txt { display:flex; flex-direction:column-reverse; }
+  .legend { display:flex; gap:24px; font-size:14px; color:#8a6a99; }
+  .legend i { display:inline-block; width:14px; height:14px; border-radius:50%; margin-right:6px; vertical-align:-2px; }
+</style>
+</head>
+<body>
+  <h1>Q3 2026 delivery timeline</h1>
+  <p class="lead">Milestones agreed at the kickoff on 2026-08-05.</p>
+  <div class="track">
+    <div class="done"></div>
+    <div class="m done" style="left:6%"><div class="dot"></div><div class="date">Jul 7</div><div class="title">Kickoff</div></div>
+    <div class="m done" style="left:26%"><div class="dot"></div><div class="date">Jul 28</div><div class="title">Queue in staging</div></div>
+    <div class="m" style="left:44%"><div class="dot"></div><div class="date">Aug 18</div><div class="title">Load test</div></div>
+    <div class="m" style="left:64%"><div class="dot"></div><div class="date">Sep 8</div><div class="title">Blue/green cut-over</div></div>
+    <div class="m" style="left:84%"><div class="dot"></div><div class="date">Sep 29</div><div class="title">Retire old path</div></div>
+  </div>
+  <div class="legend"><span><i style="background:#8e44ad"></i>Done</span><span><i style="background:#fff;border:3px solid #8e44ad;box-sizing:border-box"></i>Planned</span></div>
+</body>
+</html>

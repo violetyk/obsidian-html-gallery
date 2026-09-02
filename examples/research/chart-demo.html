@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Queue depth per hour (canvas chart)</title>
+<style>
+  body { margin:0; padding:40px 56px; background:#0f172a; color:#e2e8f0; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  h1 { margin:0 0 6px; font-size:32px; }
+  p { margin:0 0 20px; color:#94a3b8; }
+  canvas { display:block; width:100%; max-width:1100px; height:auto; background:#111c33; border-radius:12px; }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    // Everything on this page is rendered by JavaScript. With scripts disabled the
+    // thumbnail would be blank, so HTML Gallery shows a text fallback instead.
+    const root = document.getElementById('app');
+    const h1 = document.createElement('h1'); h1.textContent = 'Queue depth per hour'; root.appendChild(h1);
+    const p = document.createElement('p'); p.textContent = 'Messages waiting in orders.placed during the load test on 2026-08-18.'; root.appendChild(p);
+    const c = document.createElement('canvas'); c.width = 1100; c.height = 480; root.appendChild(c);
+    const ctx = c.getContext('2d');
+    const data = [120, 340, 560, 910, 1480, 2210, 1830, 1260, 740, 380, 210, 90];
+    const max = 2500, pad = 60, w = c.width - pad * 2, h = c.height - pad * 2;
+    ctx.strokeStyle = '#334155'; ctx.lineWidth = 1; ctx.font = '14px sans-serif'; ctx.fillStyle = '#94a3b8';
+    for (let i = 0; i <= 5; i++) {
+      const y = pad + h - (h * i / 5);
+      ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(pad + w, y); ctx.stroke();
+      ctx.fillText(String(max * i / 5), 10, y + 5);
+    }
+    const bw = w / data.length;
+    data.forEach((v, i) => {
+      const bh = h * v / max;
+      const g = ctx.createLinearGradient(0, pad + h - bh, 0, pad + h);
+      g.addColorStop(0, '#38bdf8'); g.addColorStop(1, '#0ea5e9');
+      ctx.fillStyle = g;
+      ctx.fillRect(pad + i * bw + 10, pad + h - bh, bw - 20, bh);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`${9 + i}:00`, pad + i * bw + bw / 2 - 18, pad + h + 24);
+    });
+  </script>
+</body>
+</html>
