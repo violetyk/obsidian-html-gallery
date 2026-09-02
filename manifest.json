@@ -1,8 +1,8 @@
 {
   "id": "html-gallery",
   "name": "HTML Gallery",
-  "version": "1.0.0",
-  "minAppVersion": "1.4.0",
+  "version": "1.0.1",
+  "minAppVersion": "1.7.2",
   "description": "Browse HTML files in your vault as a grid of live thumbnails, search them by title and content, and open the notes that link to them.",
   "author": "violetyk",
   "authorUrl": "https://github.com/violetyk",

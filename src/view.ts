@@ -670,7 +670,8 @@ export class HtmlGalleryView extends ItemView {
   private queueRescale(): void {
     if (this.rescaleQueued) return;
     this.rescaleQueued = true;
-    requestAnimationFrame(() => {
+    // Use the window that owns this view so popout windows work too
+    this.contentEl.win.requestAnimationFrame(() => {
       this.rescaleQueued = false;
       const grid = this.gridEl;
       if (!grid) return;

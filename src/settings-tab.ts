@@ -1,7 +1,12 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
-import { LangSetting, t } from "./i18n";
+import { App, PluginSettingTab, Setting, SettingDefinitionItem } from "obsidian";
+import { t } from "./i18n";
 import type HtmlGalleryPlugin from "./main";
-import { ThumbnailSize } from "./settings";
+import { HtmlGallerySettings } from "./settings";
+
+type SettingKey = keyof HtmlGallerySettings;
+
+/** Obsidian 1.13+ renders the tab from these definitions; the tab is re-rendered through update() */
+type Updatable = { update?: () => void };
 
 export class HtmlGallerySettingTab extends PluginSettingTab {
   constructor(
@@ -10,6 +15,87 @@ export class HtmlGallerySettingTab extends PluginSettingTab {
   ) {
     super(app, plugin);
   }
+
+  // ----- Declarative settings (Obsidian 1.13 and later) -----
+
+  getSettingDefinitions(): SettingDefinitionItem<SettingKey>[] {
+    return [
+      {
+        name: t("settings.language"),
+        desc: t("settings.language.desc"),
+        control: {
+          type: "dropdown",
+          key: "language",
+          options: {
+            auto: t("settings.language.auto"),
+            en: t("settings.language.en"),
+            ja: t("settings.language.ja"),
+          },
+        },
+      },
+      {
+        name: t("settings.thumbnailScripts"),
+        desc: t("settings.thumbnailScripts.desc"),
+        control: { type: "toggle", key: "thumbnailScripts" },
+      },
+      {
+        name: t("settings.thumbnailSize"),
+        desc: t("settings.thumbnailSize.desc"),
+        control: {
+          type: "dropdown",
+          key: "thumbnailSize",
+          options: {
+            small: t("settings.size.small"),
+            medium: t("settings.size.medium"),
+            large: t("settings.size.large"),
+          },
+        },
+      },
+      {
+        name: t("settings.targetFolder"),
+        desc: t("settings.targetFolder.desc"),
+        control: { type: "text", key: "targetFolder", placeholder: t("settings.targetFolder.placeholder") },
+      },
+      {
+        name: t("settings.excludeFolders"),
+        desc: t("settings.excludeFolders.desc"),
+        control: {
+          type: "textarea",
+          key: "excludeFolders",
+          placeholder: t("settings.excludeFolders.placeholder"),
+          rows: 4,
+        },
+      },
+      {
+        name: t("settings.includeIndex"),
+        desc: t("settings.includeIndex.desc"),
+        control: { type: "toggle", key: "includeIndexHtml" },
+      },
+    ];
+  }
+
+  getControlValue(key: string): unknown {
+    return this.plugin.settings[key as SettingKey];
+  }
+
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    await this.applyChange(key as SettingKey, value);
+    if (key === "language") {
+      // Labels come from the language, so rebuild the definitions
+      (this as Updatable).update?.();
+    }
+  }
+
+  /** Persist one setting and push the change to the open gallery views */
+  private async applyChange(key: SettingKey, value: unknown): Promise<void> {
+    const settings = this.plugin.settings as unknown as Record<string, unknown>;
+    settings[key] = value;
+    await this.plugin.saveSettings();
+    if (key === "language") this.plugin.applyLanguage();
+    this.plugin.refreshViews();
+  }
+
+  // ----- Imperative fallback for Obsidian versions older than 1.13 -----
 
   display(): void {
     const { containerEl } = this;
@@ -27,10 +113,7 @@ export class HtmlGallerySettingTab extends PluginSettingTab {
           })
           .setValue(this.plugin.settings.language)
           .onChange(async (value) => {
-            this.plugin.settings.language = value as LangSetting;
-            await this.plugin.saveSettings();
-            this.plugin.applyLanguage();
-            this.plugin.refreshViews();
+            await this.applyChange("language", value);
             this.display();
           }),
       );
@@ -39,11 +122,9 @@ export class HtmlGallerySettingTab extends PluginSettingTab {
       .setName(t("settings.thumbnailScripts"))
       .setDesc(t("settings.thumbnailScripts.desc"))
       .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.thumbnailScripts).onChange(async (value) => {
-          this.plugin.settings.thumbnailScripts = value;
-          await this.plugin.saveSettings();
-          this.plugin.refreshViews();
-        }),
+        toggle
+          .setValue(this.plugin.settings.thumbnailScripts)
+          .onChange((value) => this.applyChange("thumbnailScripts", value)),
       );
 
     new Setting(containerEl)
@@ -57,11 +138,7 @@ export class HtmlGallerySettingTab extends PluginSettingTab {
             large: t("settings.size.large"),
           })
           .setValue(this.plugin.settings.thumbnailSize)
-          .onChange(async (value) => {
-            this.plugin.settings.thumbnailSize = value as ThumbnailSize;
-            await this.plugin.saveSettings();
-            this.plugin.refreshViews();
-          }),
+          .onChange((value) => this.applyChange("thumbnailSize", value)),
       );
 
     new Setting(containerEl)
@@ -71,11 +148,7 @@ export class HtmlGallerySettingTab extends PluginSettingTab {
         text
           .setPlaceholder(t("settings.targetFolder.placeholder"))
           .setValue(this.plugin.settings.targetFolder)
-          .onChange(async (value) => {
-            this.plugin.settings.targetFolder = value;
-            await this.plugin.saveSettings();
-            this.plugin.refreshViews();
-          }),
+          .onChange((value) => this.applyChange("targetFolder", value)),
       );
 
     new Setting(containerEl)
@@ -85,11 +158,7 @@ export class HtmlGallerySettingTab extends PluginSettingTab {
         text
           .setPlaceholder(t("settings.excludeFolders.placeholder"))
           .setValue(this.plugin.settings.excludeFolders)
-          .onChange(async (value) => {
-            this.plugin.settings.excludeFolders = value;
-            await this.plugin.saveSettings();
-            this.plugin.refreshViews();
-          });
+          .onChange((value) => this.applyChange("excludeFolders", value));
         text.inputEl.rows = 4;
         text.inputEl.addClass("html-gallery-settings-textarea");
       });
@@ -98,11 +167,9 @@ export class HtmlGallerySettingTab extends PluginSettingTab {
       .setName(t("settings.includeIndex"))
       .setDesc(t("settings.includeIndex.desc"))
       .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.includeIndexHtml).onChange(async (value) => {
-          this.plugin.settings.includeIndexHtml = value;
-          await this.plugin.saveSettings();
-          this.plugin.refreshViews();
-        }),
+        toggle
+          .setValue(this.plugin.settings.includeIndexHtml)
+          .onChange((value) => this.applyChange("includeIndexHtml", value)),
       );
   }
 }

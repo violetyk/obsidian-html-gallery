@@ -16,10 +16,11 @@ Obsidian のコミュニティプラグインとして配布するための手�
 
 ```sh
 npm install
+npm run lint
 npm run build
 ```
 
-型エラーが無いこと、`main.js` が生成されることを確認する。手元の保管庫で一度動かして、コンソールにエラーが出ないことも見る。
+`npm run lint` は公式レビューと同じルール（eslint-plugin-obsidianmd）で検査する。エラーが無いこと、`main.js` が生成されることを確認する。手元の保管庫で一度動かして、コンソールにエラーが出ないことも見る。
 
 ## 3. コミットしてプッシュする
 
@@ -31,14 +32,16 @@ git push
 
 ## 4. GitHub でリリースを作る
 
+リリースを公開すると GitHub Actions（`.github/workflows/release.yml`）が動き、タグのコミットから `main.js` をビルドして、`main.js` / `manifest.json` / `styles.css` をアセットとして添付し、ビルド来歴のアテステーション（artifact attestation）を付ける。手で添付する必要はない。
+
 1. リポジトリの Releases から「Draft a new release」を開く
 2. タグは `manifest.json` の `version` と完全に同じ文字列にする（例: `1.0.1`。先頭に `v` を付けない）。ターゲットは `main`
 3. リリースタイトルも同じバージョン文字列にする
-4. アセットとして次の 3 ファイルを個別に添付する。zip にまとめない
-   - `main.js`（`npm run build` で生成したもの）
-   - `manifest.json`
-   - `styles.css`
-5. 「Publish release」を押す
+4. アセットは付けずに「Publish release」を押す
+5. Actions タブで「Release assets」ワークフローの完了を待つ（1〜2 分）。タグと `manifest.json` のバージョンが違うと失敗する
+6. リリースページに `main.js` `manifest.json` `styles.css` の 3 つが並んでいることを確認する
+
+ワークフローが使えない場合は、`npm run build` した `main.js` と `manifest.json` `styles.css` を手で個別に添付してもよい（zip にしない）。その場合アテステーションは付かない。
 
 ## 5. 初回のみ: コミュニティプラグインへの登録申請
 

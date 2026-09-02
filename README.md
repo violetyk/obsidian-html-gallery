@@ -77,6 +77,7 @@ TypeScript + esbuild, the same layout as the official Obsidian sample plugin.
 npm install
 npm run build   # type-check and emit main.js
 npm run dev     # watch mode
+npm run lint    # same rules as the community plugin review (eslint-plugin-obsidianmd)
 ```
 
 Symlink this repository into a vault's plugin folder so every build is picked up by Obsidian:

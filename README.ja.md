@@ -77,6 +77,7 @@ TypeScript + esbuild 構成です（Obsidian 公式サンプルプラグイン�
 npm install
 npm run build   # 型チェック + main.js を生成
 npm run dev     # 監視ビルド
+npm run lint    # コミュニティプラグインの審査と同じルールで検査（eslint-plugin-obsidianmd）
 ```
 
 開発中は、このリポジトリのディレクトリを保管庫のプラグインフォルダにシンボリックリンクすると、ビルドのたびに Obsidian へ反映できます。
