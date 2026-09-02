@@ -2,7 +2,6 @@ import {
   debounce,
   ItemView,
   Menu,
-  moment,
   Platform,
   setIcon,
   TAbstractFile,
@@ -32,6 +31,14 @@ type FileExplorerLike = { revealInFolder?: (file: TFile) => void };
 type AppWithDefaultApp = { openWithDefaultApp?: (path: string) => void };
 
 const SIZES: ThumbnailSize[] = ["small", "medium", "large"];
+
+/** Local date as YYYY-MM-DD, optionally with HH:mm */
+function formatDate(timestamp: number, withTime: boolean): string {
+  const d = new Date(timestamp);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return withTime ? `${date} ${pad(d.getHours())}:${pad(d.getMinutes())}` : date;
+}
 
 export class HtmlGalleryView extends ItemView {
   plugin: HtmlGalleryPlugin;
@@ -403,7 +410,7 @@ export class HtmlGalleryView extends ItemView {
   }
 
   private renderCard(parent: HTMLElement, file: TFile, entry: HtmlEntry | undefined): void {
-    const modified = moment(file.stat.mtime).format("YYYY-MM-DD HH:mm");
+    const modified = formatDate(file.stat.mtime, true);
     const tooltip = [entry?.title ?? file.basename, file.path, `${t("card.modified")}: ${modified}`].join("\n");
     const card = parent.createDiv({
       cls: "html-gallery-card",
@@ -441,7 +448,7 @@ export class HtmlGalleryView extends ItemView {
     this.renderRefsButton(nameRow, file, refs);
     const pathRow = meta.createDiv({ cls: "html-gallery-path-row" });
     pathRow.createSpan({ cls: "html-gallery-path", text: file.parent?.path ?? "" });
-    pathRow.createSpan({ cls: "html-gallery-date", text: moment(file.stat.mtime).format("YYYY-MM-DD") });
+    pathRow.createSpan({ cls: "html-gallery-date", text: formatDate(file.stat.mtime, false) });
   }
 
   /** Right-click menu on a card: open, jump to notes, copy link or path, reveal, open externally */

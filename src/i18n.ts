@@ -1,5 +1,3 @@
-import { moment } from "obsidian";
-
 export type Lang = "en" | "ja";
 export type LangSetting = "auto" | Lang;
 
@@ -166,9 +164,9 @@ const dictionaries: Record<Lang, Record<I18nKey, string>> = { en, ja };
 
 let current: Lang = "en";
 
-/** Detect from Obsidian's own language (the moment locale) */
+/** Detect from Obsidian's own language: it sets the lang attribute on the document root */
 export function detectLang(): Lang {
-  const locale = (moment.locale() || "").toLowerCase();
+  const locale = (document.documentElement.lang || navigator.language || "").toLowerCase();
   return locale.startsWith("ja") ? "ja" : "en";
 }
 
