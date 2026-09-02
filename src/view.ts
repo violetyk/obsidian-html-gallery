@@ -127,11 +127,12 @@ export class HtmlGalleryView extends ItemView {
     this.render();
   }
 
-  async onClose(): Promise<void> {
+  onClose(): Promise<void> {
     this.lazyObserver?.disconnect();
     this.lazyObserver = null;
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
+    return Promise.resolve();
   }
 
   onResize(): void {

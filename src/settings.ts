@@ -1,3 +1,4 @@
+import { normalizePath } from "obsidian";
 import type { LangSetting } from "./i18n";
 
 export type ThumbnailSize = "small" | "medium" | "large";
@@ -38,7 +39,10 @@ export function parseExcludeFolders(raw: string): string[] {
     .filter((s) => s.length > 0);
 }
 
-/** Folder path without surrounding whitespace and slashes */
+/** Folder path without surrounding whitespace and slashes, normalized the way Obsidian expects */
 export function normalizeFolder(raw: string): string {
-  return raw.trim().replace(/^\/+/, "").replace(/\/+$/, "");
+  const trimmed = raw.trim().replace(/^\/+/, "").replace(/\/+$/, "");
+  if (trimmed === "") return "";
+  const normalized = normalizePath(trimmed);
+  return normalized === "/" ? "" : normalized;
 }

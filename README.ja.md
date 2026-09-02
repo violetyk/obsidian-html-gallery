@@ -38,7 +38,7 @@ JS で描画するページは一覧ではテキストの代替表示になり�
 
 ## 利用の前提
 
-- Obsidian の設定「ファイルとリンク」で「すべてのファイル形式を表示」を有効にしてください。無効だと HTML が保管庫のファイルとして扱われず、一覧に出ません
+- Obsidian の設定「ファイルとリンク」で「すべてのファイル拡張子を認識」を有効にしてください。無効だと HTML が保管庫のファイルとして扱われず、一覧に出ません
 - HTML は保管庫の中に置いてください（保管庫外のファイルは対象外です）
 
 ## インストール（手動）
@@ -85,7 +85,9 @@ npm run dev     # 監視ビルド
 ln -s "$(pwd)" "<vault>/.obsidian/plugins/html-gallery"
 ```
 
-Obsidian 側の再読み込みは、Obsidian CLI があれば `obsidian plugin:reload id=html-gallery`、無ければコマンドパレットの「アプリを再読み込み」で行います。エラーは開発者ツール（`Cmd+Option+I` / `Ctrl+Shift+I`）のコンソールに出ます。
+Obsidian 側の再読み込みは、Obsidian CLI があれば `obsidian plugin:reload id=html-gallery`、無ければコマンドパレットの「保存せずにアプリをリロード」で行います。エラーは開発者ツール（`Cmd+Option+I` / `Ctrl+Shift+I`）のコンソールに出ます。
+
+リリース手順は [RELEASING.md](RELEASING.md) にまとめています。
 
 ### ソース構成
 

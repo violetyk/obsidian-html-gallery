@@ -87,6 +87,8 @@ ln -s "$(pwd)" "<vault>/.obsidian/plugins/html-gallery"
 
 Reload the plugin with the Obsidian CLI (`obsidian plugin:reload id=html-gallery`) or with "Reload app without saving" from the command palette. Errors show up in the developer console (`Cmd+Option+I` / `Ctrl+Shift+I`).
 
+Release steps are in [RELEASING.md](RELEASING.md) (Japanese).
+
 ### Source layout
 
 | File | Role |
