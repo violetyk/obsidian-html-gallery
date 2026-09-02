@@ -1,6 +1,6 @@
 # HTML Gallery（Obsidian プラグイン）
 
-[English README](README.md)
+[English README](README.md) · [プラグインページ](https://community.obsidian.md/plugins/html-gallery)
 
 保管庫の中のHTMLファイルを一覧表示し、HTMLを参照するノートへ辿ることができるプラグインです。
 
@@ -41,11 +41,13 @@ JS で描画するページは一覧ではテキストの代替表示になり�
 - Obsidian の設定「ファイルとリンク」で「すべてのファイル拡張子を認識」を有効にしてください。無効だと HTML が保管庫のファイルとして扱われず、一覧に出ません
 - HTML は保管庫の中に置いてください（保管庫外のファイルは対象外です）
 
-## インストール（手動）
+## インストール
 
-1. リリース成果物、または後述のビルドで得た `main.js` `manifest.json` `styles.css` を `<vault>/.obsidian/plugins/html-gallery/` に置きます
-2. Obsidian の設定「コミュニティプラグイン」で HTML Gallery を有効にします
-3. 左のリボンのアイコン、またはコマンドパレットの「HTML Gallery: ギャラリーを開く」で開きます
+コミュニティプラグインのディレクトリからインストールできます: [community.obsidian.md/plugins/html-gallery](https://community.obsidian.md/plugins/html-gallery)。ページの「Add to Obsidian」ボタンを押すと Obsidian 上でこのプラグインが開きます。Obsidian の設定「コミュニティプラグイン」の「閲覧」から「HTML Gallery」を検索しても見つかります。
+
+手動で入れる場合は、[リリース](https://github.com/violetyk/obsidian-html-gallery/releases)（または後述のビルド）の `main.js` `manifest.json` `styles.css` を `<vault>/.obsidian/plugins/html-gallery/` に置き、設定「コミュニティプラグイン」で HTML Gallery を有効にします。
+
+左のリボンのアイコン、またはコマンドパレットの「HTML Gallery: ギャラリーを開く」で開きます。
 
 ## コマンド
 

@@ -1,6 +1,6 @@
 # HTML Gallery (Obsidian plugin)
 
-[日本語版 README](README.ja.md)
+[日本語版 README](README.ja.md) · [Plugin page](https://community.obsidian.md/plugins/html-gallery)
 
 Browse the HTML files in your vault as thumbnails and jump to the notes that reference them.
 
@@ -41,11 +41,13 @@ Search matches file names, titles and body text. Here "queue" narrows nine files
 - Enable "Detect all file extensions" under Settings → Files and links. Without it Obsidian does not treat HTML as vault files and the gallery stays empty
 - HTML files must be inside the vault
 
-## Installation (manual)
+## Installation
 
-1. Put `main.js`, `manifest.json` and `styles.css` from a release (or from your own build, see below) into `<vault>/.obsidian/plugins/html-gallery/`
-2. Enable HTML Gallery under Settings → Community plugins
-3. Open the gallery from the ribbon icon or the command "HTML Gallery: Open gallery"
+Install it from the community plugin directory: [community.obsidian.md/plugins/html-gallery](https://community.obsidian.md/plugins/html-gallery). The "Add to Obsidian" button there opens the plugin in Obsidian. You can also search for "HTML Gallery" under Settings → Community plugins → Browse.
+
+Manual install: put `main.js`, `manifest.json` and `styles.css` from a [release](https://github.com/violetyk/obsidian-html-gallery/releases) (or from your own build, see below) into `<vault>/.obsidian/plugins/html-gallery/`, then enable HTML Gallery under Settings → Community plugins.
+
+Open the gallery from the ribbon icon or the command "HTML Gallery: Open gallery".
 
 ## Commands
 
