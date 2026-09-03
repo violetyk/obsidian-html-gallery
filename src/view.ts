@@ -10,7 +10,7 @@ import {
   WorkspaceLeaf,
 } from "obsidian";
 import { BacklinkIndex, NoteRefs, resolveNoteRefs } from "./backlinks";
-import { LAZY_ROOT_MARGIN, SIBLING_NOTE_LIMIT, VIEW_TYPE } from "./constants";
+import { LAZY_ROOT_MARGIN, RETIRED_CARD_TIMEOUT_MS, SIBLING_NOTE_LIMIT, VIEW_TYPE } from "./constants";
 import { collectHtmlFiles, isTargetHtmlFile, isUnderFolder } from "./files";
 import { t } from "./i18n";
 import { ICON_ID } from "./icon";
@@ -24,6 +24,15 @@ import { applyThumbnailScale, createThumbnailIframe, ResourcePathCache } from ".
 
 interface GalleryViewState {
   folder?: string;
+}
+
+/** A rendered card and what it was rendered from */
+interface GalleryCard {
+  el: HTMLElement;
+  file: TFile;
+  folder: string;
+  /** Inputs that require rebuilding the card when they change */
+  signature: string;
 }
 
 /** Not in the official typings: the file explorer view can reveal a file, and desktop can open one externally */
@@ -54,6 +63,15 @@ export class HtmlGalleryView extends ItemView {
   private lazyObserver: IntersectionObserver | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private rescaleQueued = false;
+  /**
+   * Cards currently in the grid, keyed by file path. Cards are reused across renders and are never
+   * moved in the DOM: removing or re-inserting an iframe cancels its in-flight app:// requests, and
+   * Obsidian's main process crashes when such a request arrives after its frame is gone
+   * ("Cannot read properties of undefined (reading 'origin')"). Order comes from the CSS `order`
+   * property, and search / folder filters only toggle visibility
+   */
+  private cards = new Map<string, GalleryCard>();
+  private emptyEl: HTMLElement | null = null;
 
   private resourcePaths: ResourcePathCache;
   private backlinks: BacklinkIndex;
@@ -166,22 +184,30 @@ export class HtmlGalleryView extends ItemView {
 
   private buildUi(): void {
     const root = this.contentEl;
-    root.empty();
     root.addClass("html-gallery");
     if (!this.keyboardBound) {
       this.registerDomEvent(root, "keydown", (evt) => this.onKeyDown(evt));
       this.keyboardBound = true;
     }
 
+    // The header is rebuilt on every call (language switching). The grid is created once and kept,
+    // because moving or recreating its iframes would cancel their in-flight requests
+    this.headerEl?.remove();
     this.headerEl = root.createDiv({ cls: "html-gallery-header" });
+    root.prepend(this.headerEl);
     this.renderHeader(this.headerEl);
 
-    this.gridEl = root.createDiv({ cls: "html-gallery-grid" });
+    if (!this.gridEl) {
+      this.gridEl = root.createDiv({ cls: "html-gallery-grid" });
+      this.emptyEl = this.gridEl.createDiv({ cls: "html-gallery-empty is-hidden" });
+      this.lazyObserver = new IntersectionObserver((entries) => this.onIntersect(entries), {
+        root: null,
+        rootMargin: LAZY_ROOT_MARGIN,
+      });
+      this.resizeObserver = new ResizeObserver(() => this.queueRescale());
+      this.resizeObserver.observe(this.gridEl);
+    }
     this.applySizeClass();
-
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = new ResizeObserver(() => this.queueRescale());
-    this.resizeObserver.observe(this.gridEl);
   }
 
   // ----- Index -----
@@ -220,7 +246,7 @@ export class HtmlGalleryView extends ItemView {
     search.value = this.query;
     search.addEventListener("input", () => {
       this.query = search.value;
-      this.render();
+      this.applyFilter();
     });
 
     // Folder filter
@@ -349,9 +375,7 @@ export class HtmlGalleryView extends ItemView {
   // ----- Grid -----
 
   private sortedFiles(): TFile[] {
-    const files = collectHtmlFiles(this.app, this.plugin.settings).filter((f) =>
-      isUnderFolder(f.path, this.folderFilter),
-    );
+    const files = collectHtmlFiles(this.app, this.plugin.settings);
     if (this.plugin.settings.sortOrder === "path") {
       files.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
     } else {
@@ -360,69 +384,157 @@ export class HtmlGalleryView extends ItemView {
     return files;
   }
 
+  /**
+   * Sync the grid with the vault: create cards for new or changed files, drop cards for removed ones,
+   * assign display order and group headings, then apply the filters. Unchanged cards stay untouched
+   */
   render(): void {
     const grid = this.gridEl;
     if (!grid) return;
 
-    // Dispose the old observer before creating a new one (avoids leaks)
-    this.lazyObserver?.disconnect();
-    this.lazyObserver = new IntersectionObserver((entries) => this.onIntersect(entries), {
-      root: null,
-      rootMargin: LAZY_ROOT_MARGIN,
-    });
-
-    grid.empty();
-
-    const all = this.sortedFiles();
-    const query = this.query.trim();
-    const files = query
-      ? all.filter((f) => {
-          const entry = this.index.get(f);
-          return entry ? matchesQuery(entry, query) : f.path.toLowerCase().includes(query.toLowerCase());
-        })
-      : all;
-
-    if (this.countEl) {
-      const base = query
-        ? t("header.countFiltered", { n: files.length, total: all.length })
-        : t("header.count", { n: all.length });
-      this.countEl.setText(this.indexReady ? base : `${base} ${t("header.indexing")}`);
+    const files = this.sortedFiles();
+    const scripts = this.plugin.settings.thumbnailScripts;
+    const wanted = new Map<string, { file: TFile; entry: HtmlEntry | undefined; signature: string }>();
+    for (const file of files) {
+      const entry = this.index.get(file);
+      const signature = [file.stat.mtime, scripts ? 1 : 0, entry?.isEmpty ? 1 : 0].join("|");
+      wanted.set(file.path, { file, entry, signature });
     }
 
-    if (files.length === 0) {
-      const total = collectHtmlFiles(this.app, this.plugin.settings).length;
-      grid.createDiv({ cls: "html-gallery-empty", text: total === 0 ? t("grid.empty") : t("grid.noMatch") });
-      return;
+    // Remove cards whose file is gone or whose inputs changed
+    for (const [path, card] of this.cards) {
+      if (wanted.get(path)?.signature === card.signature) continue;
+      this.disposeCard(card);
+      this.cards.delete(path);
     }
+
+    // Headings are cheap; rebuild them every time
+    grid.querySelectorAll(".html-gallery-group-heading").forEach((el) => el.remove());
+
     const groupByFolder = this.plugin.settings.sortOrder === "path";
     let currentFolder: string | null = null;
-    for (const file of files) {
+    let order = 0;
+    for (const { file, entry } of wanted.values()) {
       const folder = file.parent?.path ?? "";
       if (groupByFolder && folder !== currentFolder) {
         currentFolder = folder;
         const heading = grid.createDiv({ cls: "html-gallery-group-heading" });
+        heading.dataset.folder = folder;
+        heading.style.order = String(order++);
         setIcon(heading.createSpan({ cls: "html-gallery-button-icon" }), "folder");
         heading.createSpan({ text: folder === "" || folder === "/" ? "/" : folder });
       }
-      this.renderCard(grid, file, this.index.get(file));
+      let card = this.cards.get(file.path);
+      if (!card) {
+        card = {
+          el: this.renderCard(grid, file, entry),
+          file,
+          folder,
+          signature: wanted.get(file.path)?.signature ?? "",
+        };
+        this.cards.set(file.path, card);
+      } else {
+        this.updateCardText(card, entry);
+      }
+      card.el.style.order = String(order++);
+    }
+
+    this.applyFilter();
+  }
+
+  /**
+   * Remove a card. An iframe that is still loading is hidden instead and removed once it has
+   * finished (or after a timeout): detaching it mid-load cancels its app:// requests, and Obsidian's
+   * main process throws when such a request has no frame any more
+   */
+  private disposeCard(card: GalleryCard): void {
+    const shot = card.el.querySelector<HTMLElement>(".html-gallery-shot");
+    if (shot) this.lazyObserver?.unobserve(shot);
+    const iframe = card.el.querySelector<HTMLIFrameElement>("iframe.html-gallery-iframe");
+    const loading = iframe !== null && iframe.hasAttribute("src") && !shot?.hasClass("is-loaded");
+    if (!loading) {
+      card.el.remove();
+      return;
+    }
+    card.el.addClass("is-hidden");
+    card.el.removeAttribute("tabindex");
+    const remove = () => card.el.remove();
+    iframe.addEventListener("load", remove, { once: true });
+    this.contentEl.win.setTimeout(remove, RETIRED_CARD_TIMEOUT_MS);
+  }
+
+  /** The index may finish after the card was created: refresh the texts that depend on it */
+  private updateCardText(card: GalleryCard, entry: HtmlEntry | undefined): void {
+    const title = entry?.title ?? card.file.basename;
+    card.el.setAttribute("title", this.cardTooltip(card.file, entry));
+    const placeholder = card.el.querySelector<HTMLElement>(".html-gallery-shot-placeholder");
+    if (placeholder && placeholder.textContent !== title) placeholder.setText(title);
+  }
+
+  private cardTooltip(file: TFile, entry: HtmlEntry | undefined): string {
+    const modified = formatDate(file.stat.mtime, true);
+    return [entry?.title ?? file.basename, file.path, `${t("card.modified")}: ${modified}`].join("\n");
+  }
+
+  /** Show only the cards matching the folder filter and the search query. Never touches iframes */
+  private applyFilter(): void {
+    const grid = this.gridEl;
+    if (!grid) return;
+
+    const query = this.query.trim();
+    let total = 0;
+    let shown = 0;
+    const visibleFolders = new Set<string>();
+    for (const card of this.cards.values()) {
+      const inFolder = isUnderFolder(card.file.path, this.folderFilter);
+      if (inFolder) total++;
+      const entry = this.index.get(card.file);
+      const matches =
+        !query ||
+        (entry ? matchesQuery(entry, query) : card.file.path.toLowerCase().includes(query.toLowerCase()));
+      const visible = inFolder && matches;
+      if (visible) {
+        shown++;
+        visibleFolders.add(card.folder);
+      }
+      card.el.toggleClass("is-hidden", !visible);
+    }
+    let firstHeading = true;
+    grid.querySelectorAll<HTMLElement>(".html-gallery-group-heading").forEach((heading) => {
+      const visible = visibleFolders.has(heading.dataset.folder ?? "");
+      heading.toggleClass("is-hidden", !visible);
+      heading.toggleClass("is-first", visible && firstHeading);
+      if (visible) firstHeading = false;
+    });
+
+    if (this.countEl) {
+      const base = query
+        ? t("header.countFiltered", { n: shown, total })
+        : t("header.count", { n: total });
+      this.countEl.setText(this.indexReady ? base : `${base} ${t("header.indexing")}`);
+    }
+
+    if (this.emptyEl) {
+      this.emptyEl.toggleClass("is-hidden", shown > 0);
+      if (shown === 0) this.emptyEl.setText(this.cards.size === 0 ? t("grid.empty") : t("grid.noMatch"));
     }
     this.queueRescale();
   }
 
-  private renderCard(parent: HTMLElement, file: TFile, entry: HtmlEntry | undefined): void {
-    const modified = formatDate(file.stat.mtime, true);
-    const tooltip = [entry?.title ?? file.basename, file.path, `${t("card.modified")}: ${modified}`].join("\n");
+  private renderCard(parent: HTMLElement, file: TFile, entry: HtmlEntry | undefined): HTMLElement {
     const card = parent.createDiv({
       cls: "html-gallery-card",
-      attr: { tabindex: "0", role: "button", title: tooltip },
+      attr: { tabindex: "0", role: "button", title: this.cardTooltip(file, entry) },
     });
     card.dataset.path = file.path;
-    const refs = resolveNoteRefs(this.backlinks, file, SIBLING_NOTE_LIMIT);
-    const open = () => this.openPreview(file, entry, refs);
+    // Cards live across many renders, so resolve the index entry and references at interaction time
+    const current = () => this.index.get(file);
+    const refs = () => resolveNoteRefs(this.backlinks, file, SIBLING_NOTE_LIMIT);
+    const open = () => this.openPreview(file, current(), refs());
     card.addEventListener("click", open);
     card.addEventListener("contextmenu", (evt) => {
       evt.preventDefault();
-      this.showCardMenu(evt, file, entry, refs);
+      this.showCardMenu(evt, file, current(), refs());
     });
     card.addEventListener("keydown", (evt) => {
       if (evt.key === "Enter" || evt.key === " ") {
@@ -445,10 +557,11 @@ export class HtmlGalleryView extends ItemView {
     const meta = card.createDiv({ cls: "html-gallery-meta" });
     const nameRow = meta.createDiv({ cls: "html-gallery-name-row" });
     nameRow.createDiv({ cls: "html-gallery-name", text: file.basename });
-    this.renderRefsButton(nameRow, file, refs);
+    this.renderRefsButton(nameRow, file, refs());
     const pathRow = meta.createDiv({ cls: "html-gallery-path-row" });
     pathRow.createSpan({ cls: "html-gallery-path", text: file.parent?.path ?? "" });
     pathRow.createSpan({ cls: "html-gallery-date", text: formatDate(file.stat.mtime, false) });
+    return card;
   }
 
   /** Right-click menu on a card: open, jump to notes, copy link or path, reveal, open externally */
@@ -518,7 +631,7 @@ export class HtmlGalleryView extends ItemView {
         if (search.value) {
           search.value = "";
           this.query = "";
-          this.render();
+          this.applyFilter();
         } else {
           this.focusCard(0);
         }
@@ -537,7 +650,7 @@ export class HtmlGalleryView extends ItemView {
 
     const card = target.closest<HTMLElement>(".html-gallery-card");
     if (!card || !this.gridEl) return;
-    const cards = Array.from(this.gridEl.querySelectorAll<HTMLElement>(".html-gallery-card"));
+    const cards = this.visibleCards();
     const idx = cards.indexOf(card);
     if (idx < 0) return;
     const cols = this.columnCount(cards);
@@ -569,8 +682,16 @@ export class HtmlGalleryView extends ItemView {
     this.focusCard(next, cards);
   }
 
+  /** Visible cards in display order (DOM order is insertion order, so sort by the CSS order) */
+  private visibleCards(): HTMLElement[] {
+    return [...this.cards.values()]
+      .map((c) => c.el)
+      .filter((el) => !el.hasClass("is-hidden"))
+      .sort((a, b) => Number(a.style.order) - Number(b.style.order));
+  }
+
   private focusCard(index: number, cards?: HTMLElement[]): void {
-    const list = cards ?? Array.from(this.gridEl?.querySelectorAll<HTMLElement>(".html-gallery-card") ?? []);
+    const list = cards ?? this.visibleCards();
     const el = list[index];
     if (!el) return;
     el.focus({ preventScroll: true });

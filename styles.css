@@ -146,8 +146,15 @@
   font-weight: var(--font-semibold);
 }
 
-.html-gallery-group-heading:first-child {
+.html-gallery-group-heading.is-first {
   margin-top: 0;
+}
+
+/* Filtered-out cards and headings stay in the DOM (removing an iframe mid-load crashes Obsidian) */
+.html-gallery-card.is-hidden,
+.html-gallery-group-heading.is-hidden,
+.html-gallery-empty.is-hidden {
+  display: none;
 }
 
 /* ===== Thumbnail iframe ===== */

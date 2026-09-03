@@ -126,9 +126,19 @@ iframe.style.transform = `scale(${scale})`;
 
 再計算のタイミングは、初回描画後・ウィンドウリサイズ時・サムネイルサイズ変更時・ペイン幅変更時。`ResizeObserver` をグリッド要素に付けるのが確実。`requestAnimationFrame` を挟まないと `clientWidth` が 0 のまま計算されることがある。
 
+### iframe を作り直さない・動かさない
+
+Obsidian 本体（メインプロセス）は `app://` へのリクエストを `webRequest.onBeforeRequest` で検査し、その際 `frame.origin` を無条件に読む。読み込み途中の iframe を DOM から外すと、後から届くリクエストに frame が無く、`TypeError: Cannot read properties of undefined (reading 'origin')` でアプリごと落ちる（1.13.7 で確認）。iframe を DOM 上で移動しても再挿入扱いで同じ経路を踏む。プラグイン側は次の設計でこれを避ける。
+
+- カードはファイルパスをキーに保持し、描画のたびに再利用する。作り直すのは、ファイルが消えた・更新された（mtime）・空判定やスクリプト設定が変わった場合だけ
+- 検索とフォルダ絞り込みは `is-hidden` クラスの付け外しだけで行い、DOM を再生成しない。`display: none` のカードは `IntersectionObserver` に交差しないので、見えるようになった時点で遅延読み込みが始まる
+- 並び順は CSS の `order` で指定し、要素を並べ替えない。フォルダ見出しは iframe を持たないので毎回作り直してよい
+- どうしても消すカードの iframe が読み込み途中（`src` あり・`is-loaded` なし）なら、非表示にしたまま残し、`load` イベントかタイムアウト（`RETIRED_CARD_TIMEOUT_MS`）で取り除く
+- ヘッダー（言語切替などで再生成）とグリッドは別要素にし、グリッドはビューの生存中に一度しか作らない
+
 ### IntersectionObserver の後始末
 
-検索で絞り込むたびにカードを作り直す設計なので、古いオブザーバが残るとリークする。再描画の頭で `disconnect()` してから作り直すこと。読み込み済みの要素は個別に `unobserve()` する。
+オブザーバはグリッドと同時に一度だけ作り、カードを取り除くときに対象要素を `unobserve()` する。ビューを閉じるときに `disconnect()` する。
 
 ### DOM生成
 

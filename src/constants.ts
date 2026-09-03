@@ -11,6 +11,9 @@ export const SANDBOX_NO_SCRIPTS = "allow-same-origin";
 /** sandbox value for thumbnails with scripts enabled and for the enlarged view. Never combined with allow-same-origin */
 export const SANDBOX_SCRIPTS = "allow-scripts";
 
+/** How long a replaced card whose iframe is still loading is kept (hidden) before it is removed anyway */
+export const RETIRED_CARD_TIMEOUT_MS = 15000;
+
 /** Preload margin for the IntersectionObserver */
 export const LAZY_ROOT_MARGIN = "300px 0px";
 
