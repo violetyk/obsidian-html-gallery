@@ -1,6 +1,6 @@
 {
   "name": "obsidian-html-gallery",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Browse HTML files in your vault as a grid of live thumbnails, search them by title and content, and open the notes that link to them.",
   "main": "main.js",
   "private": true,
