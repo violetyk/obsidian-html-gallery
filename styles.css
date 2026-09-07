@@ -28,12 +28,18 @@
 }
 
 .html-gallery-search {
-  flex: 1 1 auto;
-  min-width: 120px;
+  /* A small basis on purpose: with flex-wrap, the line break is decided from the basis, not from
+     how far an item could shrink. Growing from 96px keeps the controls on one row and lets the
+     search box take whatever is left */
+  flex: 1 1 96px;
+  min-width: 96px;
 }
 
+/* A readout, not a control: the rule keeps it from reading as part of the button row */
 .html-gallery-count {
   flex: none;
+  padding-left: 9px;
+  border-left: 1px solid var(--background-modifier-border);
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
   white-space: nowrap;
@@ -45,6 +51,7 @@
   gap: 16px;
   padding: 16px;
   align-content: start;
+  align-items: start;
 }
 
 /* ===== Card ===== */
@@ -68,7 +75,7 @@
 .html-gallery-shot {
   position: relative;
   width: 100%;
-  aspect-ratio: 1280 / 920;
+  aspect-ratio: var(--html-gallery-shot-ratio, 1280 / 920);
   overflow: hidden;
   background: var(--background-secondary);
 }
@@ -177,6 +184,71 @@
 
 .html-gallery-shot.is-loaded .html-gallery-shot-placeholder {
   visibility: hidden;
+}
+
+/* A PDF page is cropped to the top of page 1, the same way an HTML thumbnail shows only the top
+   of the page. Keeps every card the same height instead of leaving portrait-shaped gaps */
+.html-gallery-shot.is-kind-pdf .html-gallery-media {
+  object-fit: cover;
+  object-position: top center;
+}
+
+/* ===== Thumbnail image (SVG and raster) ===== */
+
+.html-gallery-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.html-gallery-shot.is-loaded .html-gallery-media {
+  opacity: 1;
+}
+
+/* A load failure keeps the placeholder: swapping in other DOM would mean rebuilding the card */
+.html-gallery-shot.is-error .html-gallery-shot-placeholder {
+  opacity: 0.5;
+}
+
+.html-gallery-shot.is-error::after {
+  content: "!";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--background-modifier-error);
+  color: var(--text-on-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Short type labels: keep them tight so four of them fit next to the other controls */
+.html-gallery-kind-button {
+  padding: 0 6px;
+  font-size: var(--font-ui-smaller, 12px);
+  letter-spacing: 0.02em;
+}
+
+/* ===== Card note (page count, missing text layer) ===== */
+
+.html-gallery-note {
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+.html-gallery-note.is-warning {
+  color: var(--text-warning, var(--text-accent));
 }
 
 /* ===== Thumbnail size ===== */
@@ -300,6 +372,13 @@
   border-radius: var(--radius-s, 4px);
   overflow: hidden;
   background: #fff;
+}
+
+.html-gallery-modal-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .html-gallery-modal-iframe {

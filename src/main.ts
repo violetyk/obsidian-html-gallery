@@ -1,17 +1,26 @@
 import { Notice, Plugin, TFolder } from "obsidian";
 import { BacklinkIndex } from "./backlinks";
 import { VIEW_TYPE } from "./constants";
-import { collectHtmlFiles } from "./files";
+import { collectGalleryFiles } from "./files";
 import { setLang, t } from "./i18n";
 import { ICON_ID, registerIcon } from "./icon";
-import { collectLinkCandidates, LinkHtmlSuggestModal } from "./link-suggest-modal";
+import { GalleryIndex } from "./indexer";
+import { collectLinkCandidates, LinkSuggestModal } from "./link-suggest-modal";
 import { insertEmbedIntoActiveNote } from "./links";
 import { DEFAULT_SETTINGS, HtmlGallerySettings } from "./settings";
 import { HtmlGallerySettingTab } from "./settings-tab";
+import { ResourcePathCache } from "./thumbnail";
 import { HtmlGalleryView } from "./view";
 
 export default class HtmlGalleryPlugin extends Plugin {
   settings: HtmlGallerySettings = { ...DEFAULT_SETTINGS };
+  /*
+   * State shared by every gallery view. Held per view it would be built again whenever a tab is
+   * reopened: PDFs re-read, resolvedLinks re-walked, resource paths re-resolved.
+   */
+  readonly index = new GalleryIndex(this.app);
+  readonly backlinks = new BacklinkIndex(this.app);
+  readonly resourcePaths = new ResourcePathCache(this.app);
   private ribbonEl: HTMLElement | null = null;
 
   async onload(): Promise<void> {
@@ -26,6 +35,16 @@ export default class HtmlGalleryPlugin extends Plugin {
       void this.activateView();
     });
     this.registerCommands();
+
+    // Walking resolvedLinks is the one piece of upkeep that costs the same whether one gallery is
+    // open or five, so it happens here once instead of in every view
+    this.backlinks.rebuild();
+    this.registerEvent(
+      this.app.metadataCache.on("resolved", () => {
+        this.backlinks.rebuild();
+        this.forEachView((view) => view.scheduleNoteRefresh());
+      }),
+    );
 
     // Context menu entry when right-clicking a folder in the file explorer
     this.registerEvent(
@@ -54,25 +73,29 @@ export default class HtmlGalleryPlugin extends Plugin {
     this.addCommand({
       id: "link-html-into-note",
       name: t("command.linkIntoNote"),
-      callback: () => this.linkHtmlIntoActiveNote(),
+      callback: () => this.linkFileIntoActiveNote(),
     });
   }
 
-  /** Pick an HTML file from the active note's folder that the note does not link to yet, and insert an embed link */
-  private linkHtmlIntoActiveNote(): void {
+  /** Pick a gallery file from the active note's folder that the note does not link to yet, and insert an embed link */
+  private linkFileIntoActiveNote(): void {
     const note = this.app.workspace.getActiveFile();
     if (!note || note.extension !== "md") {
       new Notice(t("notice.noActiveNote"));
       return;
     }
-    const backlinks = new BacklinkIndex(this.app);
-    backlinks.rebuild();
-    const candidates = collectLinkCandidates(this.app, note, collectHtmlFiles(this.app, this.settings), backlinks);
+    // The shared index is kept current by the metadataCache listener, so no rebuild here
+    const candidates = collectLinkCandidates(
+      this.app,
+      note,
+      collectGalleryFiles(this.app, this.settings),
+      this.backlinks,
+    );
     if (candidates.length === 0) {
       new Notice(t("notice.noCandidates"));
       return;
     }
-    new LinkHtmlSuggestModal(this.app, candidates, (file) => {
+    new LinkSuggestModal(this.app, candidates, (file) => {
       void insertEmbedIntoActiveNote(this.app, note, file);
     }).open();
   }
@@ -95,8 +118,12 @@ export default class HtmlGalleryPlugin extends Plugin {
 
   /** Propagate settings changes to every open gallery view */
   refreshViews(): void {
+    this.forEachView((view) => void view.refresh());
+  }
+
+  private forEachView(fn: (view: HtmlGalleryView) => void): void {
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) {
-      if (leaf.view instanceof HtmlGalleryView) void leaf.view.refresh();
+      if (leaf.view instanceof HtmlGalleryView) fn(leaf.view);
     }
   }
 

@@ -4,7 +4,7 @@ import { t } from "./i18n";
 import { appendEmbedToNote } from "./links";
 
 export interface NoteMenuOptions {
-  /** The HTML file the notes refer to */
+  /** The file the notes refer to */
   file: TFile;
   refs: NoteRefs;
   onOpen: (note: TFile) => void;

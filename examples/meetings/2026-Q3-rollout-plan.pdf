@@ -1,0 +1,68 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 2 /Kids [7 0 R 8 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Title (Q3 rollout plan) /Producer (HTML Gallery sample) >>
+endobj
+5 0 obj
+<< /Length 976 >>
+stream
+BT /F1 20 Tf 72 760 Td (Q3 rollout plan) Tj ET
+BT /F1 10.5 Tf 72 736 Td (Prepared for the 2026-08-19 retro. Sample content for HTML Gallery.) Tj ET
+BT /F1 13 Tf 72 690 Td (Milestones) Tj ET
+BT /F1 11 Tf 86 666 Td (1.  Freeze the order schema  -  week 32) Tj ET
+BT /F1 11 Tf 86 646 Td (2.  Warehouse adapter in staging  -  week 34) Tj ET
+BT /F1 11 Tf 86 626 Td (3.  Queue decision \(see ADR 001\)  -  week 35) Tj ET
+BT /F1 11 Tf 86 606 Td (4.  Pilot with two stores  -  week 37) Tj ET
+BT /F1 13 Tf 72 560 Td (Open questions) Tj ET
+BT /F1 11 Tf 86 536 Td (Does the queue need exactly-once delivery, or is idempotency enough?) Tj ET
+BT /F1 11 Tf 86 516 Td (Who owns the warehouse adapter after the pilot?) Tj ET
+BT /F1 13 Tf 72 470 Td (Notes) Tj ET
+BT /F1 11 Tf 86 446 Td (This PDF exists so the gallery has a multi-page document to render and) Tj ET
+BT /F1 11 Tf 86 426 Td (index. Search for 'idempotency' to find it by its text.) Tj ET
+BT /F1 9 Tf 72 90 Td (Page 1 of 2) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Length 627 >>
+stream
+BT /F1 20 Tf 72 760 Td (Risks and owners) Tj ET
+BT /F1 13 Tf 72 714 Td (Risks) Tj ET
+BT /F1 11 Tf 86 690 Td (Schema freeze slips  -  blocks the adapter work  -  owner: platform) Tj ET
+BT /F1 11 Tf 86 670 Td (Queue choice reopened late  -  rework in two services  -  owner: architecture) Tj ET
+BT /F1 11 Tf 86 650 Td (Pilot stores unavailable  -  timeline shifts a sprint  -  owner: operations) Tj ET
+BT /F1 13 Tf 72 604 Td (Decision log) Tj ET
+BT /F1 11 Tf 86 580 Td (2026-08-05  Kickoff, scope agreed) Tj ET
+BT /F1 11 Tf 86 560 Td (2026-08-19  Retro, milestones above confirmed) Tj ET
+BT /F1 9 Tf 72 90 Td (Page 2 of 2) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000296 00000 n 
+0000001322 00000 n 
+0000001999 00000 n 
+0000002125 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R /Info 4 0 R >>
+startxref
+2251
+%%EOF

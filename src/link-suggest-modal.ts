@@ -8,8 +8,8 @@ export interface LinkCandidate {
   orphan: boolean;
 }
 
-/** Pick an HTML file from the active note's folder that the note does not link to yet */
-export class LinkHtmlSuggestModal extends FuzzySuggestModal<LinkCandidate> {
+/** Pick a gallery file from the active note's folder that the note does not link to yet */
+export class LinkSuggestModal extends FuzzySuggestModal<LinkCandidate> {
   constructor(
     app: App,
     private candidates: LinkCandidate[],
@@ -46,11 +46,16 @@ export class LinkHtmlSuggestModal extends FuzzySuggestModal<LinkCandidate> {
   }
 }
 
-/** HTML files in the note's folder that the note does not link to yet */
-export function collectLinkCandidates(app: App, note: TFile, htmlFiles: TFile[], backlinks: BacklinkIndex): LinkCandidate[] {
+/** Gallery files in the note's folder that the note does not link to yet */
+export function collectLinkCandidates(
+  app: App,
+  note: TFile,
+  files: TFile[],
+  backlinks: BacklinkIndex,
+): LinkCandidate[] {
   const folder = note.parent?.path ?? "";
   const linkedFromNote = new Set(Object.keys(app.metadataCache.resolvedLinks[note.path] ?? {}));
-  return htmlFiles
+  return files
     .filter((f) => (f.parent?.path ?? "") === folder && !linkedFromNote.has(f.path))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
     .map((file) => ({ file, orphan: backlinks.getSources(file).length === 0 }));

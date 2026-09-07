@@ -11,6 +11,14 @@ export interface HtmlGallerySettings {
   thumbnailScripts: boolean;
   /** Thumbnail size */
   thumbnailSize: ThumbnailSize;
+  /** Show HTML files */
+  includeHtml: boolean;
+  /** Show SVG files */
+  includeSvg: boolean;
+  /** Show raster images (PNG, JPEG, ...) */
+  includeImages: boolean;
+  /** Show PDF files */
+  includePdf: boolean;
   /** Target folder (empty means the whole vault) */
   targetFolder: string;
   /** Excluded folders, one per line */
@@ -25,6 +33,10 @@ export const DEFAULT_SETTINGS: HtmlGallerySettings = {
   language: "auto",
   thumbnailScripts: false,
   thumbnailSize: "medium",
+  includeHtml: true,
+  includeSvg: false,
+  includeImages: false,
+  includePdf: false,
   targetFolder: "",
   excludeFolders: "",
   includeIndexHtml: false,

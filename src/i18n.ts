@@ -20,9 +20,16 @@ const en = {
   "header.count": "{n} files",
   "header.countFiltered": "{n} / {total} files",
   "header.indexing": "(indexing...)",
+  "header.kinds.hint": "Choose which file types the gallery lists",
+  "header.kind.html": "HTML",
+  "header.kind.svg": "SVG",
+  "header.kind.image": "IMG",
+  "header.kind.pdf": "PDF",
+  "header.unreferenced": "Unreferenced",
+  "header.unreferenced.hint": "Show only files that no note links to",
 
-  "grid.empty": "No HTML files found",
-  "grid.noMatch": "No HTML files match the filter",
+  "grid.empty": "No files found",
+  "grid.noMatch": "No files match the filter",
 
   "refs.backlinks": "Backlinks",
   "refs.siblings": "Same folder",
@@ -36,6 +43,18 @@ const en = {
   "modal.backlinks": "Backlinks ({n})",
   "modal.siblings": "Same folder ({n})",
 
+  "settings.fileTypes": "File types",
+  "settings.includeHtml": "Show HTML files",
+  "settings.includeHtml.desc": "List .html and .htm files.",
+  "settings.includeSvg": "Show SVG files",
+  "settings.includeSvg.desc":
+    "List .svg files. Their <title>, <desc> and text are searchable. SVGs are shown as images, so scripts inside them never run.",
+  "settings.includeImages": "Show raster images",
+  "settings.includeImages.desc":
+    "List .png, .jpg, .gif, .webp, .avif and .bmp files. They carry no text, so they are only found by file name and by the notes that link them. A vault full of pasted screenshots will crowd out everything else.",
+  "settings.includePdf": "Show PDF files",
+  "settings.includePdf.desc":
+    "List .pdf files, with the first page as the thumbnail. Text is extracted from the first few pages for search, so scanned PDFs without a text layer are only found by file name. Clicking a card opens Obsidian's PDF viewer.",
   "settings.language": "Language",
   "settings.language.desc": "Language of the plugin UI.",
   "settings.language.auto": "Auto (follow Obsidian)",
@@ -50,7 +69,7 @@ const en = {
   "settings.size.medium": "Medium",
   "settings.size.large": "Large",
   "settings.targetFolder": "Target folder",
-  "settings.targetFolder.desc": "Only HTML files under this folder are listed. Leave empty for the whole vault.",
+  "settings.targetFolder.desc": "Only files under this folder are listed. Leave empty for the whole vault.",
   "settings.targetFolder.placeholder": "e.g. tasks",
   "settings.excludeFolders": "Excluded folders",
   "settings.excludeFolders.desc": "Folders to hide from the gallery, one per line.",
@@ -61,15 +80,20 @@ const en = {
 
   "menu.addLinkTo": "Add link to {note}",
   "menu.openEnlarged": "Open enlarged view",
+  "menu.openInObsidian": "Open in Obsidian",
   "menu.copyEmbed": "Copy embed link",
   "menu.copyPath": "Copy path",
   "menu.revealInExplorer": "Reveal in file explorer",
   "menu.openDefaultApp": "Open in default app",
 
   "card.modified": "Modified",
+  "card.pages": "{n} pages",
+  "card.noText": "no text",
+  "card.noTextHint":
+    "No text layer, so this file can only be found by name. Scanned PDFs need OCR, which this plugin does not do.",
 
-  "command.linkIntoNote": "Insert link to an HTML file in this folder",
-  "linkModal.placeholder": "HTML files in this folder that this note does not link to yet",
+  "command.linkIntoNote": "Insert link to a file in this folder",
+  "linkModal.placeholder": "Files in this folder that this note does not link to yet",
   "linkModal.navigate": "navigate",
   "linkModal.insert": "insert link",
   "linkModal.dismiss": "dismiss",
@@ -77,7 +101,7 @@ const en = {
   "notice.linkAdded": "Added a link to {note}",
   "notice.copied": "Copied to clipboard",
   "notice.noActiveNote": "Open a Markdown note first",
-  "notice.noCandidates": "Every HTML file in this folder is already linked from this note",
+  "notice.noCandidates": "Every file in this folder is already linked from this note",
 } as const;
 
 export type I18nKey = keyof typeof en;
@@ -101,9 +125,16 @@ const ja: Record<I18nKey, string> = {
   "header.count": "{n} 件",
   "header.countFiltered": "{n} / {total} 件",
   "header.indexing": "（索引作成中）",
+  "header.kinds.hint": "一覧に出すファイル形式を選ぶ",
+  "header.kind.html": "HTML",
+  "header.kind.svg": "SVG",
+  "header.kind.image": "画像",
+  "header.kind.pdf": "PDF",
+  "header.unreferenced": "未参照",
+  "header.unreferenced.hint": "どのノートからも参照されていないファイルだけを表示",
 
-  "grid.empty": "HTML ファイルが見つかりません",
-  "grid.noMatch": "条件に一致する HTML はありません",
+  "grid.empty": "ファイルが見つかりません",
+  "grid.noMatch": "条件に一致するファイルはありません",
 
   "refs.backlinks": "バックリンク",
   "refs.siblings": "同フォルダ",
@@ -117,6 +148,18 @@ const ja: Record<I18nKey, string> = {
   "modal.backlinks": "バックリンク（{n}）",
   "modal.siblings": "同フォルダ（{n}）",
 
+  "settings.fileTypes": "対象のファイル形式",
+  "settings.includeHtml": "HTML を表示",
+  "settings.includeHtml.desc": ".html と .htm を一覧に出します。",
+  "settings.includeSvg": "SVG を表示",
+  "settings.includeSvg.desc":
+    ".svg を一覧に出します。<title> / <desc> / テキスト要素が検索対象になります。画像として表示するので、SVG 内のスクリプトは実行されません。",
+  "settings.includeImages": "画像（PNG / JPEG など）を表示",
+  "settings.includeImages.desc":
+    ".png / .jpg / .gif / .webp / .avif / .bmp を一覧に出します。テキストを持たないため、ファイル名と参照ノートからしか探せません。ノートに貼った画像が多い保管庫では、成果物が埋もれます。",
+  "settings.includePdf": "PDF を表示",
+  "settings.includePdf.desc":
+    ".pdf を一覧に出し、1ページ目をサムネイルにします。検索用に先頭数ページからテキストを抽出するため、テキスト層のないスキャンPDFはファイル名でしか探せません。カードをクリックすると Obsidian の PDF ビューアで開きます。",
   "settings.language": "言語",
   "settings.language.desc": "プラグイン UI の表示言語。",
   "settings.language.auto": "自動（Obsidian の設定に従う）",
@@ -131,7 +174,7 @@ const ja: Record<I18nKey, string> = {
   "settings.size.medium": "中",
   "settings.size.large": "大",
   "settings.targetFolder": "対象フォルダ",
-  "settings.targetFolder.desc": "このフォルダ配下の HTML だけを一覧します。空なら保管庫全体が対象です。",
+  "settings.targetFolder.desc": "このフォルダ配下のファイルだけを一覧します。空なら保管庫全体が対象です。",
   "settings.targetFolder.placeholder": "例: tasks",
   "settings.excludeFolders": "除外フォルダ",
   "settings.excludeFolders.desc": "一覧から除くフォルダを改行区切りで指定します。",
@@ -141,15 +184,20 @@ const ja: Record<I18nKey, string> = {
 
   "menu.addLinkTo": "{note} にリンクを追加",
   "menu.openEnlarged": "拡大表示を開く",
+  "menu.openInObsidian": "Obsidian で開く",
   "menu.copyEmbed": "埋め込みリンクをコピー",
   "menu.copyPath": "パスをコピー",
   "menu.revealInExplorer": "ファイルエクスプローラーで表示",
   "menu.openDefaultApp": "既定のアプリで開く",
 
   "card.modified": "更新",
+  "card.pages": "{n}ページ",
+  "card.noText": "テキストなし",
+  "card.noTextHint":
+    "テキスト層が無いため、ファイル名でしか検索できません。スキャンPDFには OCR が必要ですが、このプラグインでは行いません。",
 
-  "command.linkIntoNote": "このフォルダの HTML へのリンクを挿入",
-  "linkModal.placeholder": "このノートからまだリンクしていない、同じフォルダの HTML",
+  "command.linkIntoNote": "このフォルダのファイルへのリンクを挿入",
+  "linkModal.placeholder": "このノートからまだリンクしていない、同じフォルダのファイル",
   "linkModal.navigate": "移動",
   "linkModal.insert": "リンクを挿入",
   "linkModal.dismiss": "閉じる",
@@ -157,7 +205,7 @@ const ja: Record<I18nKey, string> = {
   "notice.linkAdded": "{note} にリンクを追加しました",
   "notice.copied": "クリップボードにコピーしました",
   "notice.noActiveNote": "先に Markdown ノートを開いてください",
-  "notice.noCandidates": "このフォルダの HTML はすべてこのノートからリンク済みです",
+  "notice.noCandidates": "このフォルダのファイルはすべてこのノートからリンク済みです",
 };
 
 const dictionaries: Record<Lang, Record<I18nKey, string>> = { en, ja };

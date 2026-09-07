@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img"
+     aria-label="Service topology: storefront, order service, queue and warehouse adapter">
+  <title>Service topology</title>
+  <desc>How the storefront reaches the warehouse adapter through the order service and the queue.</desc>
+  <style>
+    .box { fill:#ffffff; stroke:#3aa76d; stroke-width:2.5; rx:12; }
+    .box.queue { fill:#e6f6ec; stroke-dasharray:8 6; }
+    .label { font:600 16px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill:#173d2a; }
+    .sub { font:400 12px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill:#4f7a63; }
+    .edge { stroke:#3aa76d; stroke-width:2.5; fill:none; marker-end:url(#arrow); }
+    .caption { font:700 22px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill:#173d2a; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#3aa76d"/>
+    </marker>
+  </defs>
+  <rect width="640" height="360" fill="#f2faf5"/>
+  <text class="caption" x="32" y="46">Service topology</text>
+  <text class="sub" x="32" y="68">Drawn during the 2026-08-03 design session</text>
+
+  <g><rect class="box" x="32" y="110" width="150" height="72" rx="12"/>
+     <text class="label" x="52" y="145">Storefront</text>
+     <text class="sub" x="52" y="165">web and mobile</text></g>
+
+  <g><rect class="box" x="245" y="110" width="150" height="72" rx="12"/>
+     <text class="label" x="265" y="145">Order service</text>
+     <text class="sub" x="265" y="165">validates, prices</text></g>
+
+  <g><rect class="box queue" x="245" y="238" width="150" height="72" rx="12"/>
+     <text class="label" x="265" y="273">Event queue</text>
+     <text class="sub" x="265" y="293">still debated</text></g>
+
+  <g><rect class="box" x="458" y="238" width="150" height="72" rx="12"/>
+     <text class="label" x="478" y="273">Warehouse</text>
+     <text class="sub" x="478" y="293">adapter</text></g>
+
+  <path class="edge" d="M182 146 H239"/>
+  <path class="edge" d="M320 182 V232"/>
+  <path class="edge" d="M395 274 H452"/>
+</svg>

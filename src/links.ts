@@ -1,13 +1,13 @@
 import { App, MarkdownView, Notice, TFile } from "obsidian";
 import { t } from "./i18n";
 
-/** Embed link to the HTML file, written the way the user's link settings dictate (wikilink or markdown, relative or not) */
+/** Embed link to the file, written the way the user's link settings dictate (wikilink or markdown, relative or not) */
 export function buildEmbedLink(app: App, htmlFile: TFile, sourcePath: string): string {
   const link = app.fileManager.generateMarkdownLink(htmlFile, sourcePath);
   return link.startsWith("!") ? link : `!${link}`;
 }
 
-/** Append an embed link to the end of a note so the HTML file gains a real backlink */
+/** Append an embed link to the end of a note so the file gains a real backlink */
 export async function appendEmbedToNote(app: App, note: TFile, htmlFile: TFile): Promise<void> {
   const link = buildEmbedLink(app, htmlFile, note.path);
   const current = await app.vault.read(note);

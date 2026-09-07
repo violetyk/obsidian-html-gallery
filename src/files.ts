@@ -1,7 +1,6 @@
 import { App, TFile } from "obsidian";
+import { ArtifactKind, enabledKinds, FileLike, kindOf } from "./kinds";
 import { HtmlGallerySettings, normalizeFolder, parseExcludeFolders } from "./settings";
-
-const HTML_EXTENSIONS = new Set(["html", "htm"]);
 
 /** Whether the path is inside the folder (or is the folder itself) */
 export function isUnderFolder(path: string, folder: string): boolean {
@@ -9,27 +8,41 @@ export function isUnderFolder(path: string, folder: string): boolean {
   return path === folder || path.startsWith(folder + "/");
 }
 
-/** Collect the HTML files in the vault according to the settings */
-export function collectHtmlFiles(app: App, settings: HtmlGallerySettings): TFile[] {
-  const target = normalizeFolder(settings.targetFolder);
-  const excludes = parseExcludeFolders(settings.excludeFolders);
+/** The folder settings, parsed once so they are not re-parsed per file */
+export interface GalleryFilters {
+  kinds: Set<ArtifactKind>;
+  target: string;
+  excludes: string[];
+  includeIndexHtml: boolean;
+}
 
-  return app.vault.getFiles().filter((file) => {
-    if (!HTML_EXTENSIONS.has(file.extension.toLowerCase())) return false;
-    if (!isUnderFolder(file.path, target)) return false;
-    if (excludes.some((ex) => isUnderFolder(file.path, ex))) return false;
-    if (!settings.includeIndexHtml && file.basename.toLowerCase() === "index") return false;
-    return true;
-  });
+export function compileFilters(settings: HtmlGallerySettings): GalleryFilters {
+  return {
+    kinds: enabledKinds(settings),
+    target: normalizeFolder(settings.targetFolder),
+    excludes: parseExcludeFolders(settings.excludeFolders),
+    includeIndexHtml: settings.includeIndexHtml,
+  };
+}
+
+/** The kind the file belongs in the gallery as, or null when the filters exclude it */
+export function matchesFilters(file: FileLike, filters: GalleryFilters): ArtifactKind | null {
+  const kind = kindOf(file);
+  if (kind === null || !filters.kinds.has(kind)) return null;
+  if (!isUnderFolder(file.path, filters.target)) return null;
+  if (filters.excludes.some((ex) => isUnderFolder(file.path, ex))) return null;
+  // index.html is usually an entry point to other pages rather than a diagram of its own
+  if (kind === "html" && !filters.includeIndexHtml && file.basename.toLowerCase() === "index") return null;
+  return kind;
+}
+
+/** Collect the files in the vault according to the settings */
+export function collectGalleryFiles(app: App, settings: HtmlGallerySettings): TFile[] {
+  const filters = compileFilters(settings);
+  return app.vault.getFiles().filter((file) => matchesFilters(file, filters) !== null);
 }
 
 /** Whether a single file is a target (used for incremental updates on vault events) */
-export function isTargetHtmlFile(file: TFile, settings: HtmlGallerySettings): boolean {
-  if (!HTML_EXTENSIONS.has(file.extension.toLowerCase())) return false;
-  const target = normalizeFolder(settings.targetFolder);
-  if (!isUnderFolder(file.path, target)) return false;
-  const excludes = parseExcludeFolders(settings.excludeFolders);
-  if (excludes.some((ex) => isUnderFolder(file.path, ex))) return false;
-  if (!settings.includeIndexHtml && file.basename.toLowerCase() === "index") return false;
-  return true;
+export function isTargetGalleryFile(file: TFile, settings: HtmlGallerySettings): boolean {
+  return matchesFilters(file, compileFilters(settings)) !== null;
 }

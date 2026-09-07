@@ -231,3 +231,97 @@ Obsidian の API は実際に動かさないと分からない挙動がある。
 - キーボード操作: 矢印キーと Home / End でカード間を移動、Enter / Space で拡大表示、`/` または Mod+F で検索欄にフォーカス、検索欄の Escape で検索語をクリア（空ならカードへ戻る）
 - コマンド「このフォルダの HTML へのリンクを挿入」: アクティブなノートと同じフォルダにある、そのノートからまだリンクしていない HTML を候補一覧で出し、選んだものへの埋め込みリンクをカーソル位置（編集中でなければ末尾）に挿入する。どこからもリンクされていないものには「バックリンクなし」の印を付ける
 - カードにホバーでタイトル・パス・更新日時のツールチップを出し、パス行の右端に更新日を表示する
+
+## 追加要件（2026-09-07）: HTML 以外の形式への対応
+
+HTML だけでなく、AI や各種ツールが生成した成果物を同じ導線（サムネイル・検索・元ノートへの導線）で扱えるようにする。上記の仕様と食い違う場合はこちらが優先する。
+
+### 対象形式と設定
+
+対象は4種類。それぞれ独立したフラットな boolean 設定で切り替える。
+
+| 種別 | 拡張子 | 設定キー | 既定 |
+|---|---|---|---|
+| `html` | html / htm | `includeHtml` | オン |
+| `svg` | svg | `includeSvg` | オフ |
+| `image` | png / jpg / jpeg / gif / webp / avif / bmp | `includeImages` | オフ |
+| `pdf` | pdf | `includePdf` | オフ |
+
+既定を HTML だけにするのは、更新した既存ユーザーの見た目が変わらないようにするため。設定は `main.ts` で浅くマージされるので、新設定は必ずフラットなキーにする（ネストしたオブジェクトでは既存ユーザーの新キーが欠落する）。
+
+画像を既定オフにするのはプラグインの中核価値との衝突を避けるため。ノートに貼ったスクリーンショットが数百枚ある保管庫では、オンにすると成果物が埋もれる。
+
+`index.html` を除く設定（`includeIndexHtml`）は `html` のみに適用する（`index.svg` を落とさないため）。
+
+### 種別の表現
+
+`ArtifactKind = "html" | "svg" | "image" | "pdf"` の文字列リテラル・ユニオンと `switch` で表現する。provider インターフェースやレジストリは作らない。ユニオンを広げると `switch` が網羅性を失ってコンパイルエラーになるので、新種別の配線漏れは型で防げる。
+
+### サムネイル
+
+種別ごとに要素を変える。分岐は `src/shot.ts` の `renderShot` / `loadShot` に集約する。
+
+- `html`: 従来どおり `<iframe>`（幅1280px の仮想ビューポート + CSS 縮小）
+- `svg` / `image`: `<img class="html-gallery-media">`。**インライン展開も iframe も使わない**。`<img>` 経由の SVG は仕様上の secure static mode で、内部の `<script>` は実行されず外部サブリソースも取得しないため `sandbox` すら不要。逆にインライン展開すると SVG 内のスクリプトが動き、`innerHTML` 相当の禁止パターンになる
+- `pdf`: `<canvas class="html-gallery-media">` に1ページ目を描画
+
+`<img>` と `<canvas>` は自前のフレームを持たない（リクエストの発行元は生存し続けるメインフレーム）ので、「iframe を作り直さない・動かさない」の制約（`SPEC.ja.md` の該当節）を踏まない。読み込み中に DOM から外しても安全。
+
+枠の縦横比は CSS 変数 `--html-gallery-shot-ratio`（`1280 / 920`）で全形式共通にする。SVG と画像は `object-fit: contain` でレターボックス表示、PDF だけは `object-fit: cover` + `object-position: top center` で1ページ目の上端を切り取って枠を埋める。HTML のサムネイルが既に「上端だけ見せる」方式なので、それに揃えるのが一貫し、格子も不揃いにならない（PDF に縦長の枠を与えると、同じ行の HTML カードとの高さ差で大きな空きができた）。カード単位の比率指定は行わない。グリッドには `align-items: start` を付ける。
+
+読み込み失敗時は DOM を差し替えず、`is-loaded` を付けずに `is-error` を付けるだけにする（placeholder が残る）。カードを作り直さないため。`is-loaded` と `is-error` はどちらも終端状態として扱い、`IntersectionObserver` の監視を解除する（スクロールごとの再試行を防ぐ）。
+
+### カード再構築の判定
+
+`signature` は `[kind, mtime, html のときのみ scripts, html のときのみ isEmpty]`。スクリプト設定とフォールバック判定は `html` だけのものなので、他種別のカードがそれで作り直されないようにする。`pageCount` は signature に入れない（索引完了は初回描画の後なので、入れると全 PDF カードが作り直される）。
+
+### SVG の解析
+
+`DOMParser` を `"image/svg+xml"` で使う。XML パースは throw せず `<parsererror>` を含む文書を返すのでそれを検出する。`doc.title` は SVG 文書では埋まらないため、`svg > title`（直下のみ。入れ子の `<title>` は図形のツールチップでノイズになる）→ `svg > desc` → ファイル名の順。検索本文は直下の title・desc・`svg[aria-label]`・すべての `text` / `tspan`。
+
+`isEmpty` は `html` 以外では常に `false`（テキストの無いチャート SVG がフォールバック表示に落ちるのを防ぐ）。
+
+画像（ラスタ）はテキストを持たないので、ファイル名と参照ノートだけで探す。
+
+### PDF
+
+Obsidian 本体が同梱する PDF.js を公開 API `loadPdfJs()` 経由で使う。**pdfjs-dist をバンドルしない**。
+
+- `getDocument` には本体ビューアと同じリソースパスを渡す: `cMapUrl: "/lib/pdfjs/cmaps/"`, `cMapPacked: true`, `standardFontDataUrl: "/lib/pdfjs/standard_fonts/"`, `wasmUrl: "/lib/pdfjs/wasm/"`, `iccUrl: "/lib/pdfjs/iccs/"`, `isEvalSupported: false`。cMapUrl と standardFontDataUrl を渡さないと CJK PDF が白紙・豆腐になる
+- `GlobalWorkerOptions.workerSrc` は `loadPdfJs()` が設定して freeze するので触らない
+- `url` ではなく `data`（`vault.readBinary` の結果）を渡す。PDF.js はバッファをワーカーへ transfer するので、その `ArrayBuffer` は再利用しない
+- `loadPdfJs()` の戻り値は `any` なので、使う範囲だけを手書きした interface を `src/pdf.ts` に置き、キャストは1箇所だけにする（eslint の `no-unsafe-*` とコミュニティの自動レビューを通すため）
+- 同時に開くドキュメントは最大2件。索引作成と描画で同じリミッタを共有する
+- 1ページ目の描画は幅 640px と総ピクセル数の上限に収める。`devicePixelRatio` は無視する（カード1枚で数MBのバッキングストアになる）
+- 30MB を超える PDF は描画も索引もせず、最初から `is-error` にする
+- カードが画面外に出て未完了なら、`renderTask.cancel()` と `doc.destroy()` でドキュメントを破棄する。`destroy()` を忘れるとカード1枚ごとにワーカースレッドが漏れる。すべての `await` の後にキャンセル判定してから DOM に触る
+- 索引は先頭3ページまで、`SEARCH_TEXT_LIMIT` に達したら打ち切る。表示タイトルはファイル名（PDF のメタデータ Title は当てにならない）。メタデータの Title は検索本文にのみ入れる
+- テキスト層のないスキャン PDF はカードに「テキストなし」を表示する。OCR は行わない
+- カードのクリックは拡大表示モーダルではなく Obsidian 本体の PDF ビューアで開く（検索・ズーム・ページ送り・アウトラインが本体側にある。モーダルの iframe はクラッシュ経路にも触れる）
+- 開き先は `getLeaf("tab")`（新しいタブ）。`getLeaf(false)` にすると、ノートにフォーカスがある状態から開いたときにそのノートのタブを置き換えてしまう。ギャラリー自身のリーフは `view.navigation === false` なので、どちらでも置き換わらない。同じ PDF のタブを再利用する処理は入れない（クリックのたびにタブが増えるのは許容する）
+
+`GalleryIndex.build` は `mtime` と `size` が変わっていないエントリを再利用する。`refresh()` は設定変更のたびに走るので、毎回 PDF のテキストを再抽出しないため。PDF の並列度は `src/pdf.ts` の中で閉じているので、`build` は素の `Promise.all` のままでよい。
+
+### 未参照フィルタ
+
+ヘッダーに「未参照」トグルを置き、`resolvedLinks` の逆引きで参照が0件のファイルだけを表示する（同フォルダ推測は参照とみなさない）。可視性の切り替えだけで行い、iframe には触らない。件数表示は絞り込みが効いているとき（`shown !== total`）に `N / M` 形式にする。
+
+### テスト
+
+`vitest` + `jsdom`。`obsidian` は `test/obsidian-stub.ts` にエイリアスする（esbuild の `external` と同じ意図）。テスト対象は Obsidian API に依存しない純粋関数に限る: `kindOf` / `matchesFilters` / `isUnderFolder` / `parseHtml` / `parseSvg` / `parsePdfMeta` / `parseNoText` / `buildEntry` / `stampOf` / `matchesQuery` / `normalizeFolder` / `parseExcludeFolders` / `fitScale` / `createLimiter` / `formatDate`。`parseHtml` のテストは既存 HTML 挙動の回帰ネットとして扱う。
+
+CI（push / PR）で `lint` → `typecheck` → `test` → `build` を回す。
+
+### 名称
+
+表示名（`HTML Gallery`）、プラグイン ID（`html-gallery`）、ビュータイプ（`html-gallery-view`）、CSS クラス接頭辞（`html-gallery-`）はいずれも変更しない。利用者の `workspace.json` や CSS スニペットが依存しているため。
+
+`manifest.json` の `description` には PDF / SVG / image に触れておく。名前からは他形式に対応していることが分からないため。
+
+### 抽出テキストの永続化（今回やらない）
+
+抽出した PDF のテキストはメモリ上の索引にのみ持ち、ファイルには書かない。索引はプラグインのインスタンスに1つ持たせて全ビューで共有するので、タブを開き直しても再抽出は起きない。再抽出が起きるのは Obsidian の再起動後の1回だけで、実測で PDF 10件・79ファイルの索引作成が 505ms、2回目以降は `mtime`+`size` の再利用が効いて 1ms。
+
+数百件の PDF を持つ利用者から起動直後が遅いという声が出たら、そのときに `.obsidian/plugins/html-gallery/pdf-text-cache.json` を足す。形は `{ version, entries: { <path>: { stamp, pageCount, text } } }`、無効化キーは `stampOf`（`mtime:size`）、書き込みは再索引完了後にデバウンス、存在しないパスは書き込み時に掃除、`data.json`（設定）とは必ず分ける。差し込む場所はプラグインが持つ索引の入口。
+
+先に入れない理由は、新しいファイル形式・バージョン管理・破損時の扱い・書き込み競合という失敗モードが増える一方、現状の実測では体感できる差が無いこと。

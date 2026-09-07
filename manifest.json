@@ -3,7 +3,7 @@
   "name": "HTML Gallery",
   "version": "1.0.3",
   "minAppVersion": "1.7.2",
-  "description": "Browse HTML files in your vault as a grid of live thumbnails, search them by title and content, and open the notes that link to them.",
+  "description": "Browse the HTML files in your vault as a grid of live thumbnails, search them by title and content, and open the notes that link to them. PDFs, SVGs and images can be shown too.",
   "author": "violetyk",
   "authorUrl": "https://github.com/violetyk",
   "isDesktopOnly": false

@@ -2,6 +2,7 @@ import { App, Modal, Platform, setIcon, TFile } from "obsidian";
 import { NoteRefs } from "./backlinks";
 import { SANDBOX_SCRIPTS } from "./constants";
 import { t } from "./i18n";
+import { ArtifactKind } from "./kinds";
 import { showNoteMenu } from "./note-menu";
 
 /** Not in the official typings, but available on desktop: opens a file with the default app */
@@ -9,14 +10,18 @@ type AppWithDefaultApp = App & { openWithDefaultApp?: (path: string) => void };
 
 export interface PreviewModalOptions {
   file: TFile;
+  kind: ArtifactKind;
   title: string;
   resourceUrl: string;
   refs: NoteRefs;
   onOpenNote: (note: TFile) => void;
 }
 
-/** Enlarged view opened by clicking a card. Scripts are always enabled so the HTML renders as intended */
-export class HtmlPreviewModal extends Modal {
+/**
+ * Enlarged view opened by clicking a card. HTML gets an iframe with scripts enabled so it renders
+ * as intended; images get an <img>, which for SVG also keeps them script-free at full size
+ */
+export class GalleryPreviewModal extends Modal {
   constructor(
     app: App,
     private options: PreviewModalOptions,
@@ -25,7 +30,7 @@ export class HtmlPreviewModal extends Modal {
   }
 
   onOpen(): void {
-    const { file, title, resourceUrl, refs } = this.options;
+    const { file, kind, title, resourceUrl, refs } = this.options;
     this.modalEl.addClass("html-gallery-modal");
     this.titleEl.setText(title);
 
@@ -49,10 +54,22 @@ export class HtmlPreviewModal extends Modal {
     }
 
     const frameWrap = content.createDiv({ cls: "html-gallery-modal-frame" });
-    const iframe = frameWrap.createEl("iframe", { cls: "html-gallery-modal-iframe" });
-    iframe.setAttribute("sandbox", SANDBOX_SCRIPTS);
-    iframe.setAttribute("title", title);
-    iframe.src = resourceUrl;
+    switch (kind) {
+      case "html": {
+        const iframe = frameWrap.createEl("iframe", { cls: "html-gallery-modal-iframe" });
+        iframe.setAttribute("sandbox", SANDBOX_SCRIPTS);
+        iframe.setAttribute("title", title);
+        iframe.src = resourceUrl;
+        break;
+      }
+      case "svg":
+      case "image": {
+        const img = frameWrap.createEl("img", { cls: "html-gallery-modal-image" });
+        img.alt = title;
+        img.src = resourceUrl;
+        break;
+      }
+    }
   }
 
   private renderNotesButton(parent: HTMLElement, refs: NoteRefs): void {

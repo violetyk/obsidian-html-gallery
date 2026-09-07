@@ -9,18 +9,21 @@ import {
   ViewStateResult,
   WorkspaceLeaf,
 } from "obsidian";
-import { BacklinkIndex, NoteRefs, resolveNoteRefs } from "./backlinks";
+import { NoteRefs, resolveNoteRefs } from "./backlinks";
 import { LAZY_ROOT_MARGIN, RETIRED_CARD_TIMEOUT_MS, SIBLING_NOTE_LIMIT, VIEW_TYPE } from "./constants";
-import { collectHtmlFiles, isTargetHtmlFile, isUnderFolder } from "./files";
+import { collectGalleryFiles, isTargetGalleryFile, isUnderFolder } from "./files";
+import { formatDate } from "./format";
 import { t } from "./i18n";
 import { ICON_ID } from "./icon";
-import { HtmlEntry, HtmlIndex, matchesQuery } from "./indexer";
+import { cardSignature, GalleryEntry, matchesQuery } from "./indexer";
+import { ALL_KINDS, ArtifactKind, ENABLED_KEY_BY_KIND, kindOf } from "./kinds";
 import { buildEmbedLink, copyText } from "./links";
 import type HtmlGalleryPlugin from "./main";
 import { addNoteItems, showNoteMenu } from "./note-menu";
-import { HtmlPreviewModal } from "./preview-modal";
+import { GalleryPreviewModal } from "./preview-modal";
 import { SortOrder, ThumbnailSize } from "./settings";
-import { applyThumbnailScale, createThumbnailIframe, ResourcePathCache } from "./thumbnail";
+import { loadShot, renderShot, ShotContext, ShotLoad } from "./shot";
+import { applyThumbnailScale } from "./thumbnail";
 
 interface GalleryViewState {
   folder?: string;
@@ -41,13 +44,10 @@ type AppWithDefaultApp = { openWithDefaultApp?: (path: string) => void };
 
 const SIZES: ThumbnailSize[] = ["small", "medium", "large"];
 
-/** Local date as YYYY-MM-DD, optionally with HH:mm */
-function formatDate(timestamp: number, withTime: boolean): string {
-  const d = new Date(timestamp);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  return withTime ? `${date} ${pad(d.getHours())}:${pad(d.getMinutes())}` : date;
-}
+/*
+ * The header toggles are labelled, not iconised: no icon reliably means "SVG" or "PDF", and a
+ * guessed glyph is worse than three letters.
+ */
 
 export class HtmlGalleryView extends ItemView {
   plugin: HtmlGalleryPlugin;
@@ -71,12 +71,26 @@ export class HtmlGalleryView extends ItemView {
    * property, and search / folder filters only toggle visibility
    */
   private cards = new Map<string, GalleryCard>();
+  /** In-flight shot loads that can be abandoned, by file path */
+  private shotLoads = new Map<string, ShotLoad>();
+  /** Show only files no note links to */
+  private unreferencedOnly = false;
+  private unreferencedButtonEl: HTMLElement | null = null;
+  private kindButtons = new Map<ArtifactKind, HTMLElement>();
   private emptyEl: HTMLElement | null = null;
 
-  private resourcePaths: ResourcePathCache;
-  private backlinks: BacklinkIndex;
-  private index: HtmlIndex;
+  private get index() {
+    return this.plugin.index;
+  }
+  private get backlinks() {
+    return this.plugin.backlinks;
+  }
+  private get resourcePaths() {
+    return this.plugin.resourcePaths;
+  }
   private indexReady = false;
+  /** Guards against an older reindex finishing after a newer one and reporting stale state */
+  private indexGeneration = 0;
 
   private query = "";
   private keyboardBound = false;
@@ -86,14 +100,11 @@ export class HtmlGalleryView extends ItemView {
   /** Re-render when HTML files are added, removed or modified (coalesces bursts of events) */
   private scheduleRender = debounce(() => this.render(), 400, true);
   /** When notes change, refresh only the reference buttons without recreating iframes */
-  private scheduleNoteRefresh = debounce(() => this.refreshNoteRefs(), 400, true);
+  scheduleNoteRefresh = debounce(() => this.refreshNoteRefs(), 400, true);
 
   constructor(leaf: WorkspaceLeaf, plugin: HtmlGalleryPlugin) {
     super(leaf);
     this.plugin = plugin;
-    this.resourcePaths = new ResourcePathCache(this.app);
-    this.backlinks = new BacklinkIndex(this.app);
-    this.index = new HtmlIndex(this.app);
   }
 
   getViewType(): string {
@@ -123,19 +134,13 @@ export class HtmlGalleryView extends ItemView {
   async onOpen(): Promise<void> {
     this.buildUi();
 
-    this.registerEvent(
-      this.app.metadataCache.on("resolved", () => {
-        this.backlinks.rebuild();
-        this.scheduleNoteRefresh();
-      }),
-    );
     this.registerEvent(this.app.vault.on("create", (file) => this.onVaultChange(file)));
     this.registerEvent(this.app.vault.on("modify", (file) => this.onVaultChange(file)));
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
         this.index.remove(file.path);
         this.resourcePaths.invalidate(file.path);
-        this.onVaultChange(file);
+        this.onVaultRemove(file);
       }),
     );
     this.registerEvent(
@@ -146,13 +151,13 @@ export class HtmlGalleryView extends ItemView {
       }),
     );
 
-    this.backlinks.rebuild();
-    this.render();
-    await this.rebuildIndex();
-    this.render();
+    await this.reindexAndRender();
   }
 
   onClose(): Promise<void> {
+    // Abandon in-flight loads before the observers go, so nothing outlives the view
+    for (const load of this.shotLoads.values()) load.cancel();
+    this.shotLoads.clear();
     this.lazyObserver?.disconnect();
     this.lazyObserver = null;
     this.resizeObserver?.disconnect();
@@ -167,8 +172,7 @@ export class HtmlGalleryView extends ItemView {
   /** Called from main when settings change. Rebuilds the header too (for language switching) */
   async refresh(): Promise<void> {
     this.buildUi();
-    await this.rebuildIndex();
-    this.render();
+    await this.reindexAndRender();
   }
 
   /** Called from the folder context menu or commands */
@@ -212,13 +216,35 @@ export class HtmlGalleryView extends ItemView {
 
   // ----- Index -----
 
-  private async rebuildIndex(): Promise<void> {
-    await this.index.build(collectHtmlFiles(this.app, this.plugin.settings));
+  /**
+   * Reindex everything, drawing twice: once immediately so the cards and the "indexing" note appear
+   * without waiting, and again when the index is ready so titles and page counts fill in.
+   * Reindexing is what takes real time after a file-type toggle, since PDFs are read then
+   */
+  private async reindexAndRender(): Promise<void> {
+    const generation = ++this.indexGeneration;
+    this.indexReady = false;
+    this.render();
+    await this.index.build(collectGalleryFiles(this.app, this.plugin.settings));
+    // A newer reindex started while this one was reading files; let that one finish the job.
+    // Its own build() replaces the entry map, so anything this one wrote is either reused or dropped
+    if (generation !== this.indexGeneration) return;
     this.indexReady = true;
+    this.render();
+  }
+
+  /**
+   * A deleted file cannot be read any more, so it is only dropped from the view. Routing it through
+   * onVaultChange would try to reindex it and log a read failure for a file that is simply gone
+   */
+  private onVaultRemove(file: TAbstractFile): void {
+    this.syncFolderOptions();
+    this.scheduleRender();
+    if (file instanceof TFile && file.extension === "md") this.scheduleNoteRefresh();
   }
 
   private onVaultChange(file: TAbstractFile): void {
-    if (file instanceof TFile && isTargetHtmlFile(file, this.plugin.settings)) {
+    if (file instanceof TFile && isTargetGalleryFile(file, this.plugin.settings)) {
       this.resourcePaths.invalidate(file.path);
       void this.index.update(file).then(() => {
         this.syncFolderOptions();
@@ -273,6 +299,32 @@ export class HtmlGalleryView extends ItemView {
     this.addSortButton(sortGroup, "path", "folder-tree", t("header.sort.path"));
     this.updateSortButtons();
 
+    // File types
+    const kindGroup = header.createDiv({
+      cls: "html-gallery-button-group html-gallery-kind-group",
+      attr: { "aria-label": t("header.kinds.hint"), title: t("header.kinds.hint") },
+    });
+    this.kindButtons.clear();
+    for (const kind of ALL_KINDS) {
+      this.addKindButton(kindGroup, kind);
+    }
+    this.updateKindButtons();
+
+    // Unreferenced filter
+    const btn = header.createEl("button", {
+      cls: "html-gallery-toggle-button html-gallery-unreferenced-button",
+      attr: { "aria-label": t("header.unreferenced.hint"), title: t("header.unreferenced.hint") },
+    });
+    setIcon(btn.createSpan({ cls: "html-gallery-button-icon" }), "unlink");
+    btn.createSpan({ text: t("header.unreferenced") });
+    btn.addEventListener("click", () => {
+      this.unreferencedOnly = !this.unreferencedOnly;
+      this.updateUnreferencedButton();
+      this.applyFilter();
+    });
+    this.unreferencedButtonEl = btn;
+    this.updateUnreferencedButton();
+
     // Thumbnail size
     const sizeGroup = header.createDiv({
       cls: "html-gallery-button-group html-gallery-size-group",
@@ -284,6 +336,36 @@ export class HtmlGalleryView extends ItemView {
     this.updateSizeButtons();
 
     this.countEl = header.createDiv({ cls: "html-gallery-count" });
+  }
+
+  /** One button per file type. Writes the same settings the settings tab writes, so they persist */
+  private addKindButton(parent: HTMLElement, kind: ArtifactKind): void {
+    const hint = t(`settings.${ENABLED_KEY_BY_KIND[kind]}` as const);
+    const btn = parent.createEl("button", {
+      cls: `html-gallery-toggle-button html-gallery-kind-button is-kind-${kind}`,
+      text: t(`header.kind.${kind}` as const),
+      attr: { "aria-label": hint, title: hint },
+    });
+    btn.addEventListener("click", () => void this.toggleKind(kind));
+    this.kindButtons.set(kind, btn);
+  }
+
+  private updateKindButtons(): void {
+    for (const [kind, btn] of this.kindButtons) {
+      btn.toggleClass("is-active", this.plugin.settings[ENABLED_KEY_BY_KIND[kind]]);
+    }
+  }
+
+  private async toggleKind(kind: ArtifactKind): Promise<void> {
+    const key = ENABLED_KEY_BY_KIND[kind];
+    this.plugin.settings[key] = !this.plugin.settings[key];
+    await this.plugin.saveSettings();
+    // Every open gallery shares these settings, so let them all reindex and redraw
+    this.plugin.refreshViews();
+  }
+
+  private updateUnreferencedButton(): void {
+    this.unreferencedButtonEl?.toggleClass("is-active", this.unreferencedOnly);
   }
 
   private addSortButton(parent: HTMLElement, order: SortOrder, icon: string, label: string): void {
@@ -340,7 +422,7 @@ export class HtmlGalleryView extends ItemView {
     const select = this.folderSelectEl;
     if (!select) return;
     const folders = new Set<string>();
-    for (const file of collectHtmlFiles(this.app, this.plugin.settings)) {
+    for (const file of collectGalleryFiles(this.app, this.plugin.settings)) {
       let path = file.parent?.path ?? "";
       while (path && path !== "/") {
         folders.add(path);
@@ -375,7 +457,7 @@ export class HtmlGalleryView extends ItemView {
   // ----- Grid -----
 
   private sortedFiles(): TFile[] {
-    const files = collectHtmlFiles(this.app, this.plugin.settings);
+    const files = collectGalleryFiles(this.app, this.plugin.settings);
     if (this.plugin.settings.sortOrder === "path") {
       files.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
     } else {
@@ -394,11 +476,15 @@ export class HtmlGalleryView extends ItemView {
 
     const files = this.sortedFiles();
     const scripts = this.plugin.settings.thumbnailScripts;
-    const wanted = new Map<string, { file: TFile; entry: HtmlEntry | undefined; signature: string }>();
+    const wanted = new Map<
+      string,
+      { file: TFile; kind: ArtifactKind; entry: GalleryEntry | undefined; signature: string }
+    >();
     for (const file of files) {
+      const kind = kindOf(file);
+      if (kind === null) continue;
       const entry = this.index.get(file);
-      const signature = [file.stat.mtime, scripts ? 1 : 0, entry?.isEmpty ? 1 : 0].join("|");
-      wanted.set(file.path, { file, entry, signature });
+      wanted.set(file.path, { file, kind, entry, signature: cardSignature(file, kind, entry, scripts) });
     }
 
     // Remove cards whose file is gone or whose inputs changed
@@ -414,7 +500,7 @@ export class HtmlGalleryView extends ItemView {
     const groupByFolder = this.plugin.settings.sortOrder === "path";
     let currentFolder: string | null = null;
     let order = 0;
-    for (const { file, entry } of wanted.values()) {
+    for (const { file, kind, entry } of wanted.values()) {
       const folder = file.parent?.path ?? "";
       if (groupByFolder && folder !== currentFolder) {
         currentFolder = folder;
@@ -427,14 +513,14 @@ export class HtmlGalleryView extends ItemView {
       let card = this.cards.get(file.path);
       if (!card) {
         card = {
-          el: this.renderCard(grid, file, entry),
+          el: this.renderCard(grid, file, kind, entry),
           file,
           folder,
           signature: wanted.get(file.path)?.signature ?? "",
         };
         this.cards.set(file.path, card);
       } else {
-        this.updateCardText(card, entry);
+        this.updateCardText(card.el, card.file, entry);
       }
       card.el.style.order = String(order++);
     }
@@ -448,6 +534,8 @@ export class HtmlGalleryView extends ItemView {
    * main process throws when such a request has no frame any more
    */
   private disposeCard(card: GalleryCard): void {
+    this.shotLoads.get(card.file.path)?.cancel();
+    this.shotLoads.delete(card.file.path);
     const shot = card.el.querySelector<HTMLElement>(".html-gallery-shot");
     if (shot) this.lazyObserver?.unobserve(shot);
     const iframe = card.el.querySelector<HTMLIFrameElement>("iframe.html-gallery-iframe");
@@ -464,14 +552,25 @@ export class HtmlGalleryView extends ItemView {
   }
 
   /** The index may finish after the card was created: refresh the texts that depend on it */
-  private updateCardText(card: GalleryCard, entry: HtmlEntry | undefined): void {
-    const title = entry?.title ?? card.file.basename;
-    card.el.setAttribute("title", this.cardTooltip(card.file, entry));
-    const placeholder = card.el.querySelector<HTMLElement>(".html-gallery-shot-placeholder");
+  private updateCardText(el: HTMLElement, file: TFile, entry: GalleryEntry | undefined): void {
+    const title = entry?.title ?? file.basename;
+    el.setAttribute("title", this.cardTooltip(file, entry));
+    const placeholder = el.querySelector<HTMLElement>(".html-gallery-shot-placeholder");
     if (placeholder && placeholder.textContent !== title) placeholder.setText(title);
+
+    // Page count and the scanned-PDF warning only become known once the file has been indexed
+    const note = el.querySelector<HTMLElement>(".html-gallery-note");
+    if (!note) return;
+    const parts: string[] = [];
+    if (entry?.pageCount !== undefined) parts.push(t("card.pages", { n: entry.pageCount }));
+    if (entry?.hasNoText) parts.push(t("card.noText"));
+    const text = parts.join(" · ");
+    if (note.textContent !== text) note.setText(text);
+    note.toggleClass("is-warning", entry?.hasNoText === true);
+    note.setAttribute("title", entry?.hasNoText ? t("card.noTextHint") : "");
   }
 
-  private cardTooltip(file: TFile, entry: HtmlEntry | undefined): string {
+  private cardTooltip(file: TFile, entry: GalleryEntry | undefined): string {
     const modified = formatDate(file.stat.mtime, true);
     return [entry?.title ?? file.basename, file.path, `${t("card.modified")}: ${modified}`].join("\n");
   }
@@ -492,7 +591,9 @@ export class HtmlGalleryView extends ItemView {
       const matches =
         !query ||
         (entry ? matchesQuery(entry, query) : card.file.path.toLowerCase().includes(query.toLowerCase()));
-      const visible = inFolder && matches;
+      // "Unreferenced" means no note links to it; same-folder guesses do not count
+      const referenced = this.backlinks.getSources(card.file).length > 0;
+      const visible = inFolder && matches && (!this.unreferencedOnly || !referenced);
       if (visible) {
         shown++;
         visibleFolders.add(card.folder);
@@ -508,9 +609,10 @@ export class HtmlGalleryView extends ItemView {
     });
 
     if (this.countEl) {
-      const base = query
-        ? t("header.countFiltered", { n: shown, total })
-        : t("header.count", { n: total });
+      const base =
+        shown === total
+          ? t("header.count", { n: total })
+          : t("header.countFiltered", { n: shown, total });
       this.countEl.setText(this.indexReady ? base : `${base} ${t("header.indexing")}`);
     }
 
@@ -521,20 +623,27 @@ export class HtmlGalleryView extends ItemView {
     this.queueRescale();
   }
 
-  private renderCard(parent: HTMLElement, file: TFile, entry: HtmlEntry | undefined): HTMLElement {
+  private renderCard(
+    parent: HTMLElement,
+    file: TFile,
+    kind: ArtifactKind,
+    entry: GalleryEntry | undefined,
+  ): HTMLElement {
     const card = parent.createDiv({
       cls: "html-gallery-card",
       attr: { tabindex: "0", role: "button", title: this.cardTooltip(file, entry) },
     });
     card.dataset.path = file.path;
+    // Exposed so CSS snippets can style one kind of card
+    card.dataset.kind = kind;
     // Cards live across many renders, so resolve the index entry and references at interaction time
     const current = () => this.index.get(file);
     const refs = () => resolveNoteRefs(this.backlinks, file, SIBLING_NOTE_LIMIT);
-    const open = () => this.openPreview(file, current(), refs());
+    const open = () => this.openArtifact(file, kind, current(), refs());
     card.addEventListener("click", open);
     card.addEventListener("contextmenu", (evt) => {
       evt.preventDefault();
-      this.showCardMenu(evt, file, current(), refs());
+      this.showCardMenu(evt, file, kind, current(), refs());
     });
     card.addEventListener("keydown", (evt) => {
       if (evt.key === "Enter" || evt.key === " ") {
@@ -545,12 +654,7 @@ export class HtmlGalleryView extends ItemView {
 
     const shot = card.createDiv({ cls: "html-gallery-shot" });
     shot.dataset.path = file.path;
-    if (entry?.isEmpty && !this.plugin.settings.thumbnailScripts) {
-      // Script-rendered HTML would be blank with scripts disabled, so show a text preview instead
-      this.renderFallbackShot(shot, entry);
-    } else {
-      shot.createDiv({ cls: "html-gallery-shot-placeholder", text: entry?.title ?? file.basename });
-      createThumbnailIframe(shot, this.plugin.settings.thumbnailScripts);
+    if (renderShot(shot, file, kind, entry, this.shotContext())) {
       this.lazyObserver?.observe(shot);
     }
 
@@ -560,21 +664,39 @@ export class HtmlGalleryView extends ItemView {
     this.renderRefsButton(nameRow, file, refs());
     const pathRow = meta.createDiv({ cls: "html-gallery-path-row" });
     pathRow.createSpan({ cls: "html-gallery-path", text: file.parent?.path ?? "" });
+    pathRow.createSpan({ cls: "html-gallery-note" });
     pathRow.createSpan({ cls: "html-gallery-date", text: formatDate(file.stat.mtime, false) });
+    this.updateCardText(card, file, entry);
     return card;
   }
 
   /** Right-click menu on a card: open, jump to notes, copy link or path, reveal, open externally */
-  private showCardMenu(evt: MouseEvent, file: TFile, entry: HtmlEntry | undefined, refs: NoteRefs): void {
+  private showCardMenu(
+    evt: MouseEvent,
+    file: TFile,
+    kind: ArtifactKind,
+    entry: GalleryEntry | undefined,
+    refs: NoteRefs,
+  ): void {
     const menu = new Menu();
-    menu.addItem((item) =>
-      item
-        .setTitle(t("menu.openEnlarged"))
-        .setIcon("maximize-2")
-        .setSection("html-gallery-main")
-        .onClick(() => this.openPreview(file, entry, refs)),
-    );
-    addNoteItems(menu, this.app, { file, refs, onOpen: (note) => void this.openNote(note) });
+    if (kind === "pdf") {
+      menu.addItem((item) =>
+        item
+          .setTitle(t("menu.openInObsidian"))
+          .setIcon("file-text")
+          .setSection("html-gallery-main")
+          .onClick(() => void this.openInWorkspace(file, "tab")),
+      );
+    } else {
+      menu.addItem((item) =>
+        item
+          .setTitle(t("menu.openEnlarged"))
+          .setIcon("maximize-2")
+          .setSection("html-gallery-main")
+          .onClick(() => this.openPreview(file, kind, entry, refs)),
+      );
+    }
+    addNoteItems(menu, this.app, { file, refs, onOpen: (note) => void this.openInWorkspace(note) });
     menu.addItem((item) =>
       item
         .setTitle(t("menu.copyEmbed"))
@@ -710,24 +832,25 @@ export class HtmlGalleryView extends ItemView {
     return Math.max(cols, 1);
   }
 
-  private openPreview(file: TFile, entry: HtmlEntry | undefined, refs: NoteRefs): void {
-    new HtmlPreviewModal(this.app, {
+  /** PDFs go to Obsidian's own viewer (search, zoom, page navigation); everything else to the modal */
+  private openArtifact(file: TFile, kind: ArtifactKind, entry: GalleryEntry | undefined, refs: NoteRefs): void {
+    if (kind === "pdf") {
+      // A new tab, so the gallery stays where it was instead of being replaced by the viewer
+      void this.openInWorkspace(file, "tab");
+      return;
+    }
+    this.openPreview(file, kind, entry, refs);
+  }
+
+  private openPreview(file: TFile, kind: ArtifactKind, entry: GalleryEntry | undefined, refs: NoteRefs): void {
+    new GalleryPreviewModal(this.app, {
       file,
+      kind,
       title: entry?.title ?? file.basename,
       resourceUrl: this.resourcePaths.get(file),
       refs,
-      onOpenNote: (note) => void this.openNote(note),
+      onOpenNote: (note) => void this.openInWorkspace(note),
     }).open();
-  }
-
-  private renderFallbackShot(shot: HTMLElement, entry: HtmlEntry): void {
-    shot.addClass("is-fallback");
-    const box = shot.createDiv({ cls: "html-gallery-fallback" });
-    box.createDiv({ cls: "html-gallery-fallback-badge", text: t("fallback.badge") });
-    box.createDiv({ cls: "html-gallery-fallback-title", text: entry.title });
-    if (entry.excerpt) {
-      box.createDiv({ cls: "html-gallery-fallback-excerpt", text: entry.excerpt });
-    }
   }
 
   /**
@@ -749,7 +872,7 @@ export class HtmlGalleryView extends ItemView {
     btn.createSpan({ cls: "html-gallery-refs-count", text: String(refs.notes.length) });
     btn.addEventListener("click", (evt) => {
       evt.stopPropagation();
-      showNoteMenu(this.app, { file, refs, onOpen: (note) => void this.openNote(note) }, evt);
+      showNoteMenu(this.app, { file, refs, onOpen: (note) => void this.openInWorkspace(note) }, evt);
     });
     btn.addEventListener("keydown", (evt) => evt.stopPropagation());
   }
@@ -768,30 +891,64 @@ export class HtmlGalleryView extends ItemView {
     });
   }
 
-  async openNote(note: TFile): Promise<void> {
-    await this.app.workspace.getLeaf(false).openFile(note);
+  async openInWorkspace(file: TFile, where: "tab" | "current" = "current"): Promise<void> {
+    await this.app.workspace.getLeaf(where === "tab" ? "tab" : false).openFile(file);
   }
 
   // ----- Lazy loading and scaling -----
 
   private onIntersect(entries: IntersectionObserverEntry[]): void {
     for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
       const shot = entry.target as HTMLElement;
-      this.lazyObserver?.unobserve(shot);
-      this.loadThumbnail(shot);
+      const cancellable = shot.hasClass("is-kind-pdf");
+      if (entry.isIntersecting) {
+        // Loaded and failed are both terminal: stop watching rather than retry on every scroll
+        if (shot.hasClass("is-loaded") || shot.hasClass("is-error")) {
+          this.lazyObserver?.unobserve(shot);
+          continue;
+        }
+        // Kinds that load once and keep their result never need watching again
+        if (!cancellable) this.lazyObserver?.unobserve(shot);
+        if (shot.dataset.loading !== "1") {
+          shot.dataset.loading = "1";
+          this.loadThumbnail(shot);
+        }
+        continue;
+      }
+      // Left the viewport before it finished: give up the pdf.js document rather than hold a worker
+      if (cancellable && !shot.hasClass("is-loaded") && !shot.hasClass("is-error")) {
+        this.cancelShotLoad(shot);
+      }
     }
+  }
+
+  private cancelShotLoad(shot: HTMLElement): void {
+    const path = shot.dataset.path;
+    if (!path) return;
+    this.shotLoads.get(path)?.cancel();
+    this.shotLoads.delete(path);
+    delete shot.dataset.loading;
   }
 
   private loadThumbnail(shot: HTMLElement): void {
     const path = shot.dataset.path;
     if (!path) return;
     const file = this.app.vault.getFileByPath(path);
-    const iframe = shot.querySelector<HTMLIFrameElement>("iframe.html-gallery-iframe");
-    if (!file || !iframe) return;
-    applyThumbnailScale(shot);
-    iframe.addEventListener("load", () => shot.addClass("is-loaded"), { once: true });
-    iframe.src = this.resourcePaths.get(file);
+    if (!file) return;
+    const kind = kindOf(file);
+    if (kind === null) return;
+    const load = loadShot(shot, file, kind, this.shotContext());
+    if (!load) return;
+    this.shotLoads.set(path, load);
+    // Drop the handle once the work is over, so the map holds only what is still cancellable
+    const forget = () => {
+      if (this.shotLoads.get(path) === load) this.shotLoads.delete(path);
+    };
+    load.done.then(forget, forget);
+  }
+
+  private shotContext(): ShotContext {
+    return { app: this.app, settings: this.plugin.settings, resourcePaths: this.resourcePaths };
   }
 
   /** Rescale every card after a requestAnimationFrame (otherwise clientWidth may still be 0) */

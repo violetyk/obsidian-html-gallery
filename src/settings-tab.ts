@@ -34,6 +34,26 @@ export class HtmlGallerySettingTab extends PluginSettingTab {
         },
       },
       {
+        name: t("settings.includeHtml"),
+        desc: t("settings.includeHtml.desc"),
+        control: { type: "toggle", key: "includeHtml" },
+      },
+      {
+        name: t("settings.includeSvg"),
+        desc: t("settings.includeSvg.desc"),
+        control: { type: "toggle", key: "includeSvg" },
+      },
+      {
+        name: t("settings.includeImages"),
+        desc: t("settings.includeImages.desc"),
+        control: { type: "toggle", key: "includeImages" },
+      },
+      {
+        name: t("settings.includePdf"),
+        desc: t("settings.includePdf.desc"),
+        control: { type: "toggle", key: "includePdf" },
+      },
+      {
         name: t("settings.thumbnailScripts"),
         desc: t("settings.thumbnailScripts.desc"),
         control: { type: "toggle", key: "thumbnailScripts" },
@@ -117,6 +137,15 @@ export class HtmlGallerySettingTab extends PluginSettingTab {
             this.display();
           }),
       );
+
+    for (const key of ["includeHtml", "includeSvg", "includeImages", "includePdf"] as const) {
+      new Setting(containerEl)
+        .setName(t(`settings.${key}`))
+        .setDesc(t(`settings.${key}.desc`))
+        .addToggle((toggle) =>
+          toggle.setValue(this.plugin.settings[key]).onChange((value) => this.applyChange(key, value)),
+        );
+    }
 
     new Setting(containerEl)
       .setName(t("settings.thumbnailScripts"))
