@@ -54,6 +54,8 @@ Manual install: put `main.js`, `manifest.json` and `styles.css` from a [release]
 
 Open the gallery from the ribbon icon or the command "HTML Gallery: Open gallery".
 
+On mobile there is no ribbon bar: tap the ribbon button in the navigation menu and pick the plugin from the list, or use the command palette. Settings → Appearance → "Quick access ribbon item" can make the ribbon button open the gallery directly. Long-pressing a folder in the file explorer works the same as right-clicking one.
+
 ## Commands
 
 | Command | What it does |
