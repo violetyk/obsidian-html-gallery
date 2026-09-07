@@ -80,7 +80,7 @@ const en = {
 
   "menu.addLinkTo": "Add link to {note}",
   "menu.openEnlarged": "Open enlarged view",
-  "menu.openInObsidian": "Open in Obsidian",
+  "menu.openInNewTab": "Open in a new tab",
   "menu.copyEmbed": "Copy embed link",
   "menu.copyPath": "Copy path",
   "menu.revealInExplorer": "Reveal in file explorer",
@@ -184,7 +184,7 @@ const ja: Record<I18nKey, string> = {
 
   "menu.addLinkTo": "{note} にリンクを追加",
   "menu.openEnlarged": "拡大表示を開く",
-  "menu.openInObsidian": "Obsidian で開く",
+  "menu.openInNewTab": "新しいタブで開く",
   "menu.copyEmbed": "埋め込みリンクをコピー",
   "menu.copyPath": "パスをコピー",
   "menu.revealInExplorer": "ファイルエクスプローラーで表示",

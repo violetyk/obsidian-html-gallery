@@ -682,7 +682,7 @@ export class HtmlGalleryView extends ItemView {
     if (kind === "pdf") {
       menu.addItem((item) =>
         item
-          .setTitle(t("menu.openInObsidian"))
+          .setTitle(t("menu.openInNewTab"))
           .setIcon("file-text")
           .setSection("html-gallery-main")
           .onClick(() => void this.openInWorkspace(file, "tab")),
